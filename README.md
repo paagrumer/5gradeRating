@@ -113,34 +113,51 @@ Each ECU belongs to a domain. The domain mix sets the share of ECUs drawn from e
 
 ---
 
-## Safety Levels (ASIL) and Impact
+## Impact from ASIL
 
-The ASIL of a component sets the **impact** axis of the risk table (ISO 26262). A component that handles personal data rises one further level (the privacy shift, up to Severe).
+The ASIL of a component sets the **impact rating** of the [ISO/SAE 21434:2021](https://www.iso.org/standard/70918.html) risk matrix, derived from the safety classification of ISO 26262. The impact ratings are Negligible, Moderate, Major and Severe.
 
-| ASIL Level | Impact |
-|------------|--------|
+| ASIL Level | Impact rating |
+|------------|---------------|
 | QM         | Negligible |
 | A          | Moderate |
 | B          | Major |
 | C          | Severe |
 | D          | Severe |
 
-## Feasibility from CVSS (Table G.8)
+## Privacy shift (PIA)
 
-Feasibility is no longer estimated from the vehicle layout. It is read directly from each finding's own CVSS record, so two independent assessors reach the same value. The CVSS exploitability `E = 8.22 x AV x AC x PR x UI` of the worst categories is mapped to a Table G.8 band:
+The privacy impact is a **binary** check: a component either handles personal data or it does not. Where it does, its impact rating rises by one, capped at Severe. This carries the privacy impact category of the [ISO/SAE 21434:2021](https://www.iso.org/standard/70918.html) impact assessment and aligns with the data-protection impact assessment of GDPR Article 35.
 
-| Feasibility band | Meaning |
-|------------------|---------|
-| Very Low         | Requires physical access and special privileges. |
-| Low              | Local or adjacent access, non-trivial to exploit. |
-| Medium           | Reachable with moderate effort. |
-| High             | Internet-reachable and easy to exploit. |
+| PIA | Effect on impact |
+|-----|------------------|
+| No personal data | No change. |
+| Handles personal data | Impact rating raised by one, capped at Severe. |
+
+## Attack feasibility from CVSS (Table G.8)
+
+Attack feasibility is not estimated from the vehicle layout. Following [ISO/SAE 21434:2021](https://www.iso.org/standard/70918.html) Annex G.3, it is read directly from each finding's own CVSS record, so two independent assessors reach the same value. The standard gives the exploitability value as
+
+```
+E = 8.22 x V x C x P x U
+```
+
+where `V`, `C`, `P` and `U` are the CVSS base exploitability metrics (attack vector, attack complexity, privileges required and user interaction). `E` ranges from 0.12 to 3.89, and Table G.8 of the standard maps it to an **attack feasibility rating**:
+
+| Attack feasibility rating | CVSS exploitability value |
+|---------------------------|---------------------------|
+| High                      | 2.96 to 3.89 |
+| Medium                    | 2.00 to 2.95 |
+| Low                       | 1.06 to 1.99 |
+| Very low                  | 0.12 to 1.05 |
+
+The ratings and ranges are taken verbatim from [ISO/SAE 21434:2021](https://www.iso.org/standard/70918.html), Table G.8 (example CVSS exploitability mapping).
 
 ---
 
 ## Network-interaction shift (shift mode)
 
-The earlier interaction risk map is replaced by a **network-interaction shift**. Instead of estimating interaction risk by component type, the feasibility band is shifted by how far a component can reach across the vehicle network. This keeps the connectivity question inside the CVSS-driven feasibility rather than adding a separate hand-set judgement.
+The earlier interaction risk map is replaced by a **network-interaction shift**. Instead of estimating interaction risk by component type, the attack feasibility rating is shifted by how far a component can reach across the vehicle network. This keeps the connectivity question inside the CVSS-driven feasibility rather than adding a separate hand-set judgement.
 
 | Reach (`netInteraction`) | Shift | Meaning |
 |--------------------------|-------|---------|
@@ -151,16 +168,18 @@ The earlier interaction risk map is replaced by a **network-interaction shift**.
 
 The shifted band is capped at **High**.
 
-## Combining impact and feasibility (Table H.8)
+## Combining impact and attack feasibility (Table H.8)
 
-Impact (rows) and the shifted feasibility (columns) meet in Table H.8 of ISO/SAE 21434, which gives the component **weight** `w` in `[1, 5]`:
+The impact rating (rows) and the shifted attack feasibility rating (columns) meet in the risk matrix, Table H.8 of [ISO/SAE 21434:2021](https://www.iso.org/standard/70918.html), which gives the component **weight** `w` in `[1, 5]`:
 
-| Impact \ Feasibility | Very Low | Low | Medium | High |
-|-----------------------|:--------:|:---:|:------:|:----:|
-| Negligible            | 1 | 1 | 1 | 1 |
-| Moderate              | 1 | 2 | 2 | 3 |
-| Major                 | 1 | 2 | 3 | 4 |
-| Severe                | 2 | 3 | 4 | 5 |
+| Impact rating \ Attack feasibility rating | Very Low | Low | Medium | High |
+|--------------------------------------------|:--------:|:---:|:------:|:----:|
+| Severe                                     | 2 | 3 | 4 | 5 |
+| Major                                      | 1 | 2 | 3 | 4 |
+| Moderate                                   | 1 | 2 | 2 | 3 |
+| Negligible                                 | 1 | 1 | 1 | 1 |
+
+The values are the risk matrix example of [ISO/SAE 21434:2021](https://www.iso.org/standard/70918.html), Table H.8.
 
 The component **star score** is `s = -0.725 x CVSS_C + 5`, clamped to `[0, 5]`, where `CVSS_C` is the combined worst-category CVSS. A clean component scores `5.00`; any vulnerability caps it at `4.75` (the 5% residual rule). The vehicle rating is the weighted average `R = Sum(s x w) / Sum(w)`.
 
