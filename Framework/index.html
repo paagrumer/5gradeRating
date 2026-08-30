@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Automotive Cybersecurity Rating</title>
+<style>
+:root{
+  --paper:#eceef1; --panel:#ffffff; --ink:#101720; --muted:#5a6472; --line:#d5dae1; --line2:#e8ebef;
+  --teal:#0b6b74; --teal-d:#084b52; --teal-wash:#e4f0f1; --gold:#d9a521;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:0 18px 80px;font-variant-numeric:tabular-nums}
+.wrap{max-width:1120px;margin:0 auto}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+h1,h2,h3,h4{margin:0}b{font-weight:700}
+
+header{padding:30px 0 16px}
+.eyebrow{font:600 11px/1.4 ui-monospace,monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--teal-d);margin-bottom:12px}
+h1{font-size:clamp(22px,4vw,32px);font-weight:800;letter-spacing:-.02em;line-height:1.06}
+.tagline{margin-top:10px;color:#2b3542;font-size:14.5px;line-height:1.55}
+.standards{margin-top:10px;font:11.5px/1.7 ui-monospace,monospace;color:var(--muted)}
+.standards b{color:var(--ink)}
+
+/* tabs */
+.tabs{display:flex;flex-wrap:nowrap;gap:4px;margin:24px 0 0;border-bottom:2px solid var(--ink)}
+.tabbtn{appearance:none;border:1px solid var(--line);border-bottom:none;background:#e2e6ea;color:var(--muted);text-align:left;
+  font:700 11.5px ui-monospace,monospace;letter-spacing:.02em;padding:7px 11px;border-radius:8px 8px 0 0;cursor:pointer;white-space:nowrap}
+.tabbtn:hover{color:var(--ink);background:#eef1f4}
+.tabbtn.active{background:var(--panel);color:var(--ink);border-color:var(--ink);margin-bottom:-2px;padding-bottom:12px}
+.tabbtn:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.tabbtn .sub2{display:block;font:400 9px ui-monospace,monospace;color:#98a2ad;margin-top:2px;letter-spacing:0}
+.tabbtn.active .sub2{color:var(--teal-d)}
+[data-tab]{padding-top:26px}
+[data-tab][hidden]{display:none}
+
+section{margin-top:34px}section:first-child{margin-top:0}
+h2{font:700 12px/1.3 ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;align-items:baseline;gap:12px;margin-bottom:6px}
+h2::before{content:attr(data-n);color:var(--teal);font-weight:800;font-size:13px}
+h2::after{content:"";flex:1;height:1px;background:var(--line);align-self:center}
+.section-intro{color:var(--muted);font-size:13.5px;line-height:1.6;margin:0 0 16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}
+
+.controls{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;margin-bottom:14px}
+label{display:block;font:600 10px ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+select{padding:9px 11px;border:1px solid var(--line);border-radius:5px;background:#fff;font:14px ui-monospace,monospace;color:var(--ink);min-width:280px}
+select:focus{outline:2px solid var(--teal);outline-offset:1px;border-color:var(--teal)}
+
+.diagram{background:#f7f9fa;border:1px solid var(--line);border-radius:8px;padding:8px}
+#arch-diagram svg .ecu{cursor:pointer}
+#arch-diagram svg .ecu:hover rect:first-of-type,#arch-diagram svg .ecu:focus rect:first-of-type{fill:#eef5f5;stroke:#0b6b74;stroke-width:1}
+#arch-diagram svg .ecu:focus{outline:none}
+.fallback{padding:26px;text-align:center;color:var(--muted);font-size:13px}
+.caption{margin-top:12px;font-size:13px;line-height:1.6;color:#2b3542;background:var(--teal-wash);border:1px solid #b7d5d7;border-radius:6px;padding:12px 14px}
+.caption .cap-ref{margin-top:8px;font:11.5px ui-monospace,monospace;color:var(--teal-d)}
+.caption .cap-ref a{color:var(--teal-d)}.caption .cap-ref .muted{color:#7a94a0}
+.caption .cap-princ{margin:8px 0 0;padding-left:18px;font-size:12px;color:#2b3542}
+.caption .cap-princ li{margin:2px 0}
+.detail{margin-top:12px;min-height:52px;border:1px solid var(--line);border-radius:6px;padding:11px 14px;background:#fff;font-size:13px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.detail .dot{width:11px;height:11px;border-radius:50%;display:inline-block}
+.detail .meta{color:var(--muted);font-size:12px;width:100%}.detail .note{color:#2b3542;width:100%;font-size:12.5px}.detail .muted{color:#98a2ad}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font:11px ui-monospace,monospace;color:var(--muted)}
+.legend .lg{display:inline-flex;align-items:center;gap:6px}.legend .sw{width:20px;height:10px;border-radius:2px;display:inline-block}.legend .mk{font-style:normal;color:#0b6b74;font-weight:700}
+
+
+/* component: computed table + derivation */
+.comp-note{font:12px ui-monospace,monospace;color:var(--muted);margin:2px 0 10px}
+.comp-wrap{border:1px solid var(--line);border-radius:8px;overflow:auto}
+table.comp{width:100%;border-collapse:collapse;font:12px ui-monospace,monospace;min-width:1040px}
+table.comp th,table.comp td{padding:7px 9px;border-bottom:1px solid var(--line2);text-align:left;white-space:nowrap}
+table.comp td.cve,table.veh td.cve{white-space:normal;line-height:1.5;font-size:11px}
+.branch{display:inline-block;padding:1px 8px;border-radius:20px;font:700 9.5px ui-monospace,monospace;letter-spacing:.02em;border:1px solid}
+.branch.b-clean{color:#2f8f6e;border-color:#bfe0d3;background:#f1faf6}
+.branch.b-case1{color:#6c7f2f;border-color:#dbe4bd;background:#f7faf0}
+.branch.b-case2{color:#9a7b12;border-color:#ecdca6;background:#fdf8ea}
+.branch.b-case3{color:#b3611f;border-color:#f0d2b0;background:#fdf3e9}
+.branch.b-worst{color:#9a3323;border-color:#e6c1b8;background:#fbf0ed}
+.cve-lnk{color:#0a6b74;text-decoration:underline;text-decoration-style:dotted}
+.flow-explorer{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px}
+.fx-lead{font-size:12.5px;color:var(--muted);margin-bottom:10px;line-height:1.55}
+.fx-picker{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.fx-btn{font:600 12px ui-sans-serif,system-ui;padding:5px 11px;border:1px solid var(--line);border-radius:16px;background:#fff;color:#2b3542;cursor:pointer;transition:all .12s}
+.fx-btn:hover{border-color:#9fb3c2}
+.fx-btn.sel{background:var(--teal);color:#fff;border-color:var(--teal)}
+.fx-out{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:stretch}
+.fx-half{background:#f7f9fa;border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.fx-tag{font:700 10px ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--teal-d);margin-bottom:8px}
+.fx-join{align-self:center;font:600 10.5px ui-sans-serif,system-ui;color:#98a2ad;writing-mode:vertical-rl;text-orientation:mixed;padding:0 2px}
+.fx-half .dv-title{display:none}
+@media(max-width:760px){.fx-out{grid-template-columns:1fr}.fx-join{writing-mode:horizontal-tb;text-align:center;padding:4px 0}}
+.flow-summary{border:1px solid var(--line);border-radius:8px;padding:18px 20px;background:#fff;margin-top:14px}
+.flow-summary h3{font-size:15px;margin-bottom:4px;color:var(--teal-d)}
+.fs-lead{font-size:12.5px;color:var(--muted);margin:0 0 14px;line-height:1.55}
+.flow{list-style:none;counter-reset:fs;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.flow li{counter-increment:fs;position:relative;padding-left:38px;font-size:13px;line-height:1.6;color:#2b3542}
+.flow li::before{content:counter(fs);position:absolute;left:0;top:0;width:24px;height:24px;border-radius:50%;background:var(--teal);color:#fff;font:700 12px ui-sans-serif,system-ui;display:flex;align-items:center;justify-content:center}
+.fs-t{font-weight:700;color:#1c2530}
+.ref{display:inline-block;font:600 10.5px ui-monospace,monospace;color:#0b6b74;background:#eef7f5;border:1px solid #cfe6db;border-radius:4px;padding:1px 6px;margin-left:4px;white-space:nowrap}
+.fs-note{font-size:11.5px;color:var(--muted);margin:14px 0 0;padding-top:12px;border-top:1px dashed var(--line);line-height:1.5}
+.refs-block{margin-top:12px}
+.refs{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:7px}
+.refs li{font-size:12px;line-height:1.55;color:#2b3542}
+.ecu{cursor:pointer}
+.ecu rect{transition:stroke .12s,stroke-width .12s}
+.ecu:hover rect{stroke:#9fb3c2}
+.ecu.sel rect{stroke:#0b6b74;stroke-width:2.2}
+.tabgroups{display:flex;gap:14px;flex-wrap:nowrap;align-items:flex-end;margin-bottom:8px;overflow-x:auto;padding-bottom:2px}
+.tabgroup{display:flex;flex-direction:column;gap:6px}
+.tabgroup-label{font:700 11px ui-sans-serif,system-ui;letter-spacing:.04em;text-transform:uppercase;color:#0b6b74;padding-left:2px}
+.tabgroup-label span{color:#98a2ad;font-weight:600;text-transform:none;letter-spacing:0}
+.tabgroup .tabs{margin:0}
+@media(max-width:720px){.tabgroups{gap:16px}.tabgroup{width:100%}}
+.sim-observation{grid-column:1/-1;display:flex;gap:10px;align-items:baseline;font-size:11.5px;line-height:1.5;color:#4f5b66;background:#f1f7f8;border:1px solid #d4e6e8;border-left:3px solid #0b6b74;border-radius:7px;padding:10px 13px;margin-top:12px}
+.sim-obs-tag{flex:none;font:800 9px ui-monospace,monospace;letter-spacing:.09em;text-transform:uppercase;color:#0b6b74}
+.sim-obs-tag::before{content:"\25C6 "}
+.sf-after{margin-top:20px;border-top:2px dashed #d9e0e6;padding-top:16px}
+.arch-optional-note{font-size:12px;color:#5a6472;background:#f1faf6;border:1px solid #cfe6db;border-radius:6px;padding:8px 11px;margin:10px 0;line-height:1.5}
+.sf-after-lead{font-size:12px;color:#5a6472;margin-bottom:10px;line-height:1.5}
+.cve-lnk:hover{color:#084b52;text-decoration-style:solid}
+.branch.b-critical{color:#fff;background:#84271c;border-color:#84271c}
+table.comp thead th{background:var(--ink);color:#fff;font:600 9.5px ui-monospace,monospace;letter-spacing:.03em;text-transform:uppercase;position:sticky;top:0}
+table.comp .n{text-align:right}
+table.comp tbody tr{cursor:pointer}table.comp tbody tr:hover{background:#eef5f5}
+table.comp tbody tr.sel{background:#e4f0f1;box-shadow:inset 3px 0 0 var(--teal)}
+table.comp .clean{color:var(--gold)}
+table.comp .dim{color:var(--muted);font-size:11px}
+table.comp .crit{display:inline-block;padding:0 7px;border-radius:3px;font-weight:700;font-size:10px;background:#84271c;color:#fff;letter-spacing:.04em}
+.deriv{margin-top:12px;border:1px solid var(--line);border-radius:8px;padding:14px 16px;background:#fff}
+.dv-title{font-size:13px;margin-bottom:8px}
+.dv-step{display:flex;gap:12px;font:12.5px/1.7 ui-monospace,monospace;padding:4px 0;border-bottom:1px solid #f2f4f6;color:#2b3542}
+.dv-step:last-child{border-bottom:none}
+.dv-step.crit-step{color:#84271c}
+table.veh{width:100%;border-collapse:collapse;font:12px ui-monospace,monospace;min-width:820px}
+table.veh th,table.veh td{padding:7px 9px;border-bottom:1px solid var(--line2);text-align:left;white-space:nowrap}
+table.veh thead th{background:var(--ink);color:#fff;font:600 9.5px ui-monospace,monospace;letter-spacing:.03em;text-transform:uppercase;position:sticky;top:0}
+table.veh .n{text-align:right}
+table.veh tbody tr{cursor:pointer}table.veh tbody tr:hover{background:#eef5f5}
+table.veh tbody tr.sel{background:#e4f0f1;box-shadow:inset 3px 0 0 var(--teal)}
+table.veh .dim{color:var(--muted)}
+table.veh .crit{display:inline-block;padding:0 6px;border-radius:3px;font-weight:700;font-size:10px;background:#84271c;color:#fff}
+.veh .shift{color:var(--teal-d);font-size:10px;font-weight:700}
+.veh-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+.veh-summary{display:flex;align-items:center;gap:26px;flex-wrap:wrap;margin:4px 0 14px;padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.veh-R{display:flex;flex-direction:column;gap:2px}
+.veh-R-num{font:800 40px/1 ui-monospace,monospace;color:var(--teal-d)}
+.veh-R-lab{font:11px ui-monospace,monospace;color:var(--muted);margin-top:3px}
+.veh-R-calc{display:flex;gap:18px;font:12px ui-monospace,monospace;color:#26303b}
+.veh-R-calc span{padding:4px 10px;background:#f1f5f6;border-radius:5px}
+.stars{font-size:18px;letter-spacing:2px}
+.stars .on{color:var(--gold)}
+.stars .off{color:#d3d9e0}
+.stars .half{background:linear-gradient(90deg,var(--gold) 50%,#d3d9e0 50%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.veh-crit{margin:0 0 14px;padding:9px 12px;border-radius:7px;background:#fbeaea;border:1px solid #e2b6b6;color:#84271c;font:12px ui-monospace,monospace}
+
+/* simulation */
+.sim-controls{display:grid;grid-template-columns:repeat(auto-fill,minmax(142px,1fr));gap:12px 14px;align-items:end;padding:16px;border:1px solid var(--line);border-radius:9px;background:#fbfcfd;margin:2px 0 14px}
+.sim-field{display:flex;flex-direction:column}
+.sim-field label{margin-bottom:5px}
+.sim-field input{padding:8px 10px;border:1px solid var(--line);border-radius:5px;background:#fff;font:13px ui-monospace,monospace;color:var(--ink);width:100%;box-sizing:border-box}
+.sim-field input:focus{outline:2px solid var(--teal);outline-offset:1px;border-color:var(--teal)}
+.sim-presets{grid-column:1/-1;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.sim-preset{appearance:none;border:1px solid var(--line);background:#fff;border-radius:5px;padding:8px 11px;font:700 12px ui-monospace,monospace;color:var(--teal-d);cursor:pointer}
+.sim-preset:hover{background:var(--teal-wash);border-color:var(--teal)}
+.sim-actions{grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sim-run,.sim-export{appearance:none;border-radius:6px;padding:9px 16px;font:700 12.5px ui-monospace,monospace;cursor:pointer;border:1px solid}
+.sim-run{background:var(--teal);color:#fff;border-color:var(--teal)}.sim-run:hover{background:var(--teal-d)}
+.sim-export{background:#fff;color:var(--teal-d);border-color:var(--line)}.sim-export:hover{background:var(--teal-wash);border-color:var(--teal)}
+.sim-running{padding:26px;text-align:center;color:var(--muted);font:13px ui-monospace,monospace}
+
+.sim-alerts{margin:0 0 16px;display:flex;flex-direction:column;gap:8px}
+.sim-alert{display:flex;gap:10px;align-items:flex-start;border-left:4px solid #d08a1e;background:#fdf5e8;border-radius:6px;padding:11px 14px;font-size:12.5px;line-height:1.5;color:#5c4415}
+.sim-alert-i{flex:none;width:18px;height:18px;border-radius:50%;background:#d08a1e;color:#fff;font-weight:800;font-size:12px;text-align:center;line-height:18px;margin-top:1px}
+.sim-alert b{color:#8a5512}
+.sim-alert-fix{font-weight:700;color:#1f6b47;white-space:nowrap}
+.sim-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:9px;margin:4px 0 14px}
+.sim-stats .sc{border:1px solid var(--line);border-radius:8px;padding:10px 14px;background:#fff;display:flex;flex-direction:column;justify-content:center}
+.sim-stats .sck{font:600 9px ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.sim-stats .scv{font:800 19px/1.1 ui-monospace,monospace;color:var(--teal-d);margin-top:3px}
+@media(min-width:900px){.sim-stats{grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}.sim-stats .scv{font-size:21px}}
+.sim-charts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:760px){.sim-charts{grid-template-columns:1fr}}
+.sim-chart{border:1px solid var(--line);border-radius:9px;padding:12px;background:#fff}
+.sim-ctitle{font:700 11px ui-monospace,monospace;letter-spacing:.04em;color:#26303b;margin-bottom:8px}
+.sim-ctitle .ct-sub{font-weight:400;color:#98a2ad;letter-spacing:0}
+.sim-stars{margin-top:14px;border:1px solid var(--line);border-radius:9px;padding:12px 14px;background:#fff}
+.starrow{display:flex;align-items:center;gap:10px;margin:4px 0;font:12px ui-monospace,monospace}
+.starrow .sl{width:26px;color:var(--gold);font-weight:700}
+.starrow .cl{width:78px;font-weight:700;font-size:11px}
+.starrow .sbar{flex:1;height:12px;background:#eef1f4;border-radius:6px;overflow:hidden}
+.starrow .sbar i{display:block;height:100%;background:linear-gradient(90deg,#7aa53f,#2f8f6e)}
+.starrow .sv{width:150px;text-align:right;color:var(--muted)}
+.sim-warn{margin:0 0 14px;padding:10px 13px;border-radius:7px;background:#fdf3e4;border:1px solid #e5c98f;color:#7a5410;font:12px ui-monospace,monospace}
+.sim-field select{padding:8px 10px;border:1px solid var(--line);border-radius:5px;background:#fff;font:12.5px ui-monospace,monospace;color:var(--ink);width:100%;box-sizing:border-box}
+.sf-panel{margin:0 0 14px;border:1px solid var(--line);border-radius:9px;background:#fbfcfd;padding:0 14px}
+.sf-panel summary{cursor:pointer;padding:11px 0;font:700 12px ui-monospace,monospace;color:var(--teal-d)}
+.sf-derived{font-weight:400;color:var(--muted);margin-left:10px}
+.sf-note{font:11.5px/1.5 ui-monospace,monospace;color:var(--muted);margin:2px 0 10px}
+.sf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:6px 18px;padding-bottom:13px}
+.sf-row{font:12px ui-monospace,monospace;color:#26303b;display:flex;align-items:center;gap:8px}
+.sf-row label{display:flex;align-items:center;gap:6px}
+.sf-row select{flex:1;min-width:0;padding:5px 7px;border:1px solid var(--line);border-radius:4px;font:11.5px ui-monospace,monospace}
+.sf-w{color:var(--muted)}
+.dist-block{margin:4px 0 14px}
+.dist-title{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font:700 11px ui-monospace,monospace;color:var(--teal-d);margin:10px 0 6px;letter-spacing:.02em}
+.dist-row{display:flex;flex-wrap:wrap;gap:12px}
+.dist-cell{display:flex;flex-direction:column;gap:3px;flex:1 1 96px}
+.dist-cell label{font:600 10px ui-monospace,monospace;color:var(--muted)}
+.dist-in{width:100%;min-width:70px;padding:8px 9px;border:1px solid var(--line);border-radius:5px;font:13px ui-monospace,monospace;text-align:right}
+.dist-in:focus{outline:2px solid var(--teal);border-color:var(--teal)}
+.dist-tab{width:100%;border-collapse:collapse;font:12px ui-monospace,monospace;background:#fff;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.dist-tab th{background:var(--ink);color:#fff;font:600 10px ui-monospace,monospace;padding:7px 8px;text-align:center}
+.dist-tab td{padding:5px 7px;border-bottom:1px solid var(--line2);text-align:center}
+.dist-tab td.dn{text-align:left;font-weight:700;color:#26303b;padding-left:10px}
+.dist-tab .dist-in{width:100%;min-width:66px;padding:7px 8px}
+.dist-btns{display:inline-flex;gap:6px}
+.dist-b{font:600 10px ui-monospace,monospace;padding:4px 10px;border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--teal-d);cursor:pointer}
+.dist-b:hover{background:var(--teal);color:#fff;border-color:var(--teal)}
+.dist-presets{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line2)}
+.dist-presets .dp-lbl{font:700 10.5px ui-monospace,monospace;color:var(--muted)}
+.dist-b.preset{background:#f1faf6;border-color:#bfe0d3}
+.dist-b.preset:hover{background:var(--teal);color:#fff}
+.dist-sum{font:700 10px ui-monospace,monospace;color:var(--muted);padding:2px 7px;border-radius:4px;background:#eef2f4}
+.dist-sum.ok{color:#fff;background:var(--teal)}
+td.dist-sum{background:#f7fbfa;color:var(--muted);text-align:center}
+td.dist-sum.ok{background:#e7f5ef;color:var(--teal-d)}
+.dist-title .dist-sum{margin-left:6px}
+.cvsstab{width:100%;border-collapse:collapse;font:11.5px ui-monospace,monospace;margin:8px 0 6px;background:#fff;border:1px solid var(--line);border-radius:6px}
+.cvsstab th{background:var(--ink);color:#fff;font:600 9px ui-monospace,monospace;letter-spacing:.05em;text-transform:uppercase;padding:6px 9px;text-align:left}
+.cvsstab td{padding:5px 9px;border-bottom:1px solid var(--line2);vertical-align:top}
+.cvsstab td.n{text-align:right;font-weight:700;color:var(--teal-d);white-space:nowrap}
+.cvsstab .dim2{color:var(--muted);font-weight:400;font-size:10px}
+.dv-sub{font-size:11px;color:var(--muted);margin:2px 0 0 0;font-style:italic}
+.dv-note{margin-top:10px;font:11px ui-monospace,monospace;color:var(--muted);font-style:italic}
+.dv-k{flex:0 0 108px;color:var(--teal-d);font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.06em;padding-top:3px}
+
+/* V&V */
+.vnv-fold{border:1px solid var(--line);border-radius:8px;margin-bottom:12px;background:#fff;overflow:hidden}
+.vnv-fold>summary{cursor:pointer;padding:14px 18px;list-style:none;display:flex;flex-direction:column;gap:2px}
+.vnv-fold>summary::-webkit-details-marker{display:none}
+.vnv-fold>summary::before{content:"▸ ";color:var(--teal-d);font-weight:700}
+.vnv-fold[open]>summary::before{content:"▾ "}
+.vnv-fold[open]>summary{border-bottom:1px solid var(--line2)}
+.vnv-sum-t{font-weight:800;font-size:14px;color:#1c2530;display:inline}
+.vnv-sum-h{font-size:11.5px;color:var(--muted);line-height:1.4}
+.vnv-fold .panel{border:none;border-radius:0;margin:0}
+.vnv-head{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.vnv-badge{font:800 11px ui-monospace,monospace;letter-spacing:.1em;padding:4px 10px;border-radius:6px;color:#fff}
+.vnv-badge.ok{background:#1f8a5b}.vnv-badge.fail{background:#c0392b}
+.vnv-count{font:600 12px ui-monospace,monospace;color:var(--muted)}
+.vnv-group{border-top:1px solid var(--line2);padding:9px 0}
+.vnv-gh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:5px}.vnv-gh b{font-size:12.5px}
+.vnv-ref{font:11px ui-monospace,monospace;color:#98a2ad}
+.vnv-gcount{margin-left:auto;font:700 11px ui-monospace,monospace;padding:1px 8px;border-radius:10px}
+.vnv-gcount.ok{background:#e3f2ea;color:#1f6b47}.vnv-gcount.fail{background:#fbe4df;color:#a1352a}
+table.vv{width:100%;border-collapse:collapse;font:11.5px ui-monospace,monospace}
+table.vv td{padding:3px 8px;border-bottom:1px solid #f0f2f5;vertical-align:top}
+table.vv .vmark{width:20px;font-weight:800}table.vv tr.p .vmark{color:#1f8a5b}table.vv tr.f .vmark{color:#c0392b}
+table.vv .vexp{color:#98a2ad;text-align:right}table.vv tr.f{background:#fdf1ef}
+
+/* details: expert blocks */
+.detail-block{border:1px solid var(--line);border-radius:8px;padding:15px 18px;background:#fff;margin-bottom:12px}
+.detail-block h3{font-size:14.5px;margin-bottom:3px}
+.detail-block .lead{font-size:12.5px;color:var(--muted);margin:0 0 6px;line-height:1.55}
+.dl{display:grid;grid-template-columns:118px 1fr;gap:5px 14px;margin-top:10px;font-size:13px}
+.dl dt{font:700 10px ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--teal-d);padding-top:3px}
+.dl dd{margin:0;color:#2b3542;line-height:1.55}
+.dl dd .ok{color:#1f8a5b;font-weight:700}
+.tt{display:inline-block;background:#eef1f4;border-radius:3px;padding:0 6px;font:700 10px ui-monospace,monospace;color:#3a4550;margin-right:4px}
+
+/* management: cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.card{border:1px solid var(--line);border-radius:8px;padding:15px 16px;background:#fff}
+.card .t{font:700 10px ui-monospace,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin-bottom:8px}
+.card h4{font-size:14.5px;margin-bottom:5px}.card p{margin:0;font-size:13px;color:var(--muted);line-height:1.5}
+.meaning{border-collapse:collapse;width:100%;font-size:13.5px;margin-top:14px;max-width:420px}
+.meaning td{padding:6px 10px;border-bottom:1px solid var(--line2)}
+.meaning td:first-child{width:96px;color:var(--gold);font:700 15px ui-monospace,monospace;letter-spacing:1px}
+
+footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--line);font:11.5px/1.7 ui-monospace,monospace;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">ISO/SAE 21434 · ISO 26262 · UN R155 / R156 · CVSS</div>
+  <h1>Automotive Cybersecurity Rating</h1>
+  <div class="tagline">A five-star cybersecurity rating for a vehicle, in the spirit of the NCAP crash-safety score but applied to security. It is derived from each ECU's confirmed vulnerabilities and its role within the vehicle.</div>
+  <div class="standards"><b>ISO/SAE 21434</b> risk · <b>ISO 26262</b> ASIL · <b>UN R155/R156</b> CSMS &amp; updates · <b>CVSS</b> vulnerability scores</div>
+</header>
+
+<!-- ============ TAB NAV ============ -->
+<div class="tabgroups">
+  <div class="tabgroup">
+    <div class="tabgroup-label">Details <span>model and references</span></div>
+    <nav class="tabs" role="tablist" aria-label="Details views">
+      <button class="tabbtn active" role="tab" data-tab-btn="architecture" aria-selected="true">Architecture<span class="sub2">illustrative view (01)</span></button>
+      <button class="tabbtn" role="tab" data-tab-btn="details" aria-selected="false">Technical description<span class="sub2">rules · references</span></button>
+      <button class="tabbtn" role="tab" data-tab-btn="management" aria-selected="false">Non-technical description<span class="sub2">plain-language</span></button>
+    </nav>
+  </div>
+  <div class="tabgroup">
+    <div class="tabgroup-label">How it works <span>worked example</span></div>
+    <nav class="tabs" role="tablist" aria-label="How it works views">
+      <button class="tabbtn" role="tab" data-tab-btn="model" aria-selected="false">Simplified example<span class="sub2">02 · 03 on one car</span></button>
+      <button class="tabbtn" role="tab" data-tab-btn="simulator" aria-selected="false">Simulator<span class="sub2">scalability</span></button>
+    </nav>
+  </div>
+  <div class="tabgroup">
+    <div class="tabgroup-label">Ver&amp;Val <span>correctness checks</span></div>
+    <nav class="tabs" role="tablist" aria-label="Verification and validation views">
+      <button class="tabbtn" role="tab" data-tab-btn="verval" aria-selected="false">Ver&amp;Val<span class="sub2">unit tests · pipeline</span></button>
+    </nav>
+  </div>
+</div>
+
+<!-- ============ TAB 1 · ARCHITECTURE (01, illustrative only) ============ -->
+<div data-tab="architecture" role="tabpanel">
+
+  <section id="architecture">
+    <h2 data-n="01">The vehicle architecture</h2>
+    <p class="section-intro"><b>This diagram is illustrative and does not affect the rating.</b> It shows how the same ECUs are reorganised as the vehicle's electrical and electronic architecture evolves. Early vehicles placed everything on a shared bus. Domain architectures grouped ECUs under domain controllers. Zonal architectures consolidate them onto a small number of high-performance computers. Select an architecture to see where the external interfaces connect and where the trust boundaries fall. Select any component to inspect it.</p>
+    <div class="panel">
+      <div class="controls"><div>
+        <label for="arch-select">E/E architecture paradigm</label>
+        <select id="arch-select" aria-label="E/E architecture paradigm">
+          <option value="distributed">Distributed, flat bus (yesterday)</option>
+          <option value="domain" selected>Domain-centralised, central gateway (today)</option>
+          <option value="zonal">Zonal, HPC and zonal controllers (tomorrow)</option>
+        </select>
+      </div></div>
+      <div class="diagram"><div id="arch-diagram"><div class="fallback">Loading the architecture module…<br><span class="mono" style="font-size:11px">If this persists, keep all the .js files in the same folder as index.html (or open standalone.html).</span></div></div></div>
+      <div id="arch-caption" class="caption"></div>
+      <div class="arch-optional-note">This diagram is illustrative only. It does not affect the Component Stars or Vehicle Stars example, nor the simulator.</div><div id="arch-detail" class="detail"><span class="muted">Select a component to inspect it. The last selection remains displayed.</span></div>
+      <div id="arch-legend" class="legend"></div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ============ TAB 2 · THE MODEL (02 + 03 worked example) ============ -->
+<div data-tab="model" role="tabpanel" hidden>
+
+  <p class="section-intro" style="margin-top:22px"><b>A worked example of the model applied to one representative vehicle.</b> Each ECU is scored individually, giving the Component Stars, and those scores are then combined into a single rating for the vehicle, the Vehicle Stars. Every CVE links to its NVD entry, so the result can be checked by hand.</p>
+
+  <section id="component">
+    <h2 data-n="02">Component Stars</h2>
+    <p class="section-intro">Each ECU earns a star score from its confirmed vulnerabilities, following <b>Algorithm 1</b>. Select any component to see how its value is derived. This step yields the star score alone. A clean ECU scores a full 5.00, and any vulnerability caps it at 4.75 under the 5% residual rule. The weighting and the aggregation follow in <b>Vehicle Stars</b>. The rules are set out in the <b>Technical description</b> tab, and the tests that check them in <b>Verification &amp; validation</b>.</p>
+    <div class="panel"><div id="component-app"></div></div>
+  </section>
+
+  <section id="vehicle">
+    <h2 data-n="03">Vehicle Stars</h2>
+    <p class="section-intro">Each star score is weighted by <b>Table H.8</b> and combined into a single rating, <span class="mono">R = &Sigma;(s&middot;w) / &Sigma;(w)</span>. The weight has two parts. The impact follows from the component's ASIL, and the feasibility follows from the CVSS exploitability of its findings, raised where the component communicates widely or handles personal data. The rules are given in the <b>Technical description</b> tab, and the tests in <b>Verification &amp; validation</b>.</p>
+    <div class="panel"><div id="vehicle-app"></div></div>
+  </section>
+
+  <div class="flow-summary">
+    <h3>How the rating is worked out, step by step</h3>
+    <p class="fs-lead">The full calculation for this vehicle, from start to finish, with the standard behind each step. Select any component above to see its own derivation.</p>
+    <ol class="flow">
+      <li><span class="fs-t">Collect the confirmed vulnerabilities</span> for each ECU. Each is a public CVE with a CVSS v3.1 base score and vector. <span class="ref">NVD · CVSS v3.1 (FIRST)</span></li>
+      <li><span class="fs-t">Component Stars, the star score <i>s</i></span> (Algorithm&nbsp;1). Group the findings by category, retain the worst CVSS in each category to prevent dilution, and take the three worst. These are then weighted by their count. One category uses <span class="mono">1·C₀</span>. Two use <span class="mono">0.6·C₀ + 0.4·C₁</span>. Three use <span class="mono">0.6·C₀ + 0.3·C₁ + 0.1·C₂</span>. This yields the component's combined score <span class="mono">CVSS_C</span>, and then <span class="mono">s = −0.725·CVSS_C + 5</span>. A clean ECU scores a full 5.00. Any vulnerability caps the star score at 4.75, which expresses the 5% residual insecurity that cannot be certified away. <span class="mono">CVSS_C</span> is the value that Algorithm&nbsp;1 in CSCS'23 denotes <span class="mono">X</span>. <span class="ref">Paper Algorithm 1 · CSCS'23</span></li>
+      <li><span class="fs-t">Impact</span> (the H.8 row) follows from the ASIL, so QM is Negligible and D is Severe. Where the component handles personal data, it rises by one level. <span class="ref">ISO 26262-3 · GDPR Art. 35</span></li>
+      <li><span class="fs-t">Feasibility</span> (the H.8 column) follows from the CVSS exploitability <span class="mono">E = 8.22·AV·AC·PR·UI</span> of those same worst categories, combined with the <b>same weights used for the star score</b>, then mapped to a Table&nbsp;G.8 band. Where the component communicates across domains it rises (E-D adds one, E-C adds two). <span class="ref">ISO/SAE 21434 Annex G.3 + G.8 · CVSS v3.1</span></li>
+      <li><span class="fs-t">Weight <i>w</i></span> is just the cell you land on in Table H.8, a number from 1 to 5. <span class="ref">ISO/SAE 21434 Annex H</span></li>
+      <li><span class="fs-t">Vehicle Stars</span>, worked out as <span class="mono">R = Σ(sᵢ·wᵢ) / Σ(wᵢ)</span> over the components that matter for security. Anything critical (CVSS ≥ 7) gets flagged and pulled out rather than hidden in an average. For this car you end up with <b>R = 3.65</b>. <span class="ref">ISO/SAE 21434 · UN ECE R155 §7.2.2.2</span></li>
+    </ol>
+    <div class="flow-explorer"><div class="fx-lead">To follow a single component through the full calculation, select an affected one below. Its derivation is shown from the star score through to its contribution to the vehicle rating.</div><div class="fx-picker" id="fx-picker"></div><div class="fx-out" id="fx-out"></div></div>
+    <p class="fs-note">Every number lives in <span class="mono">config.js</span>, and every rule is checked by the 124 automated tests over in the <b>Verification &amp; validation</b> tab.</p>
+  </div>
+
+  <div class="flow-summary refs-block">
+    <h3>References</h3>
+    <ul class="refs">
+      <li><b>CSCS'23, Algorithm 1.</b> This is the component star score itself. It takes the three worst categories, weights them, and turns them into <span class="mono">s = −0.725·X + 5</span>. <a class="cve-lnk" href="https://dl.acm.org/doi/epdf/10.1145/3631204.3631865" target="_blank" rel="noopener">dl.acm.org/doi/10.1145/3631204.3631865</a></li>
+      <li><b>DSN (IEEE).</b> The wider rating framework this builds on. <a class="cve-lnk" href="https://ieeexplore.ieee.org/document/10207096" target="_blank" rel="noopener">ieeexplore.ieee.org/document/10207096</a></li>
+      <li><b>ISO/SAE 21434:2021.</b> Road vehicle cybersecurity engineering. Annex G covers attack feasibility, where G.3 uses CVSS and Table G.8 gives the bands. Annex H covers the risk value, with Tables H.8, H.9 and H.10.</li>
+      <li><b>CVSS v3.1 Specification (FIRST).</b> This gives the base score and the exploitability part <span class="mono">E = 8.22·AV·AC·PR·UI</span>. The metric weights are AV {N .85, A .62, L .55, P .20}, AC {L .77, H .44}, PR {N .85, L .62, H .27}, UI {N .85, R .62}. <span class="mono">first.org/cvss/v3-1/specification-document</span></li>
+      <li><b>ISO 26262-3.</b> This is where the ASIL comes from, and the ASIL drives the impact side.</li>
+      <li><b>UN ECE R155.</b> The cybersecurity management side. Section 7.2.2.2 is the risk assessment, and a critical component blocks approval.</li>
+      <li><b>NVD.</b> That is <span class="mono">nvd.nist.gov</span>, where the CVE links in Component Stars point.</li>
+    </ul>
+  </div>
+
+</div>
+
+<!-- ============ TAB 3 · SIMULATOR (scalability) ============ -->
+<div data-tab="simulator" role="tabpanel" hidden>
+
+  <section id="simulation">
+    <h2 data-n="04">Simulation</h2>
+    <p class="section-intro"><b>This view examines how the model behaves at scale.</b> It generates thousands of synthetic vehicles and reports how the rating is distributed across the fleet. Each vehicle runs the same steps as the worked example. Runs are <b>seeded</b>, so a given seed reproduces the same fleet exactly. The vulnerabilities assigned always draw on achievable CVSS scores, none invented. Results can be exported per vehicle, per component, or as the underlying chart data. Configure the fleet below and run it.</p>
+    <div class="panel"><div id="simulation-app"></div></div>
+  </section>
+
+</div>
+
+<!-- ============ TAB 2 · DETAILS ============ -->
+<div data-tab="details" role="tabpanel" hidden>
+  <section>
+    <h2 data-n="A">How each part works: references and decisions</h2>
+    <p class="section-intro">A quick technical tour for reviewers: what each part computes, the standard it rests on, and the decisions taken. Everything test- and validation-related lives in the separate <b>Ver&amp;Val</b> tab.</p>
+
+    <div class="detail-block">
+      <h3>In one paragraph</h3>
+      <p class="lead">The whole method in plain terms, before the detail below.</p>
+      <p>The tool assigns a vehicle a cybersecurity rating on a five-star scale, in the spirit of the NCAP crash-safety score. It proceeds in two steps. Each ECU is first scored from the vulnerabilities confirmed in it, with the most severe carrying the most weight, which gives its <b>Component Stars</b>. Those component scores are then combined into a single rating for the vehicle, weighted towards the components that matter most, which gives the <b>Vehicle Stars</b>. Every value traces to a public standard, so the result can be independently checked. CVSS establishes the severity of a vulnerability, and ISO&nbsp;26262 sets the importance of a component through its ASIL. Table&nbsp;H.8 of ISO/SAE&nbsp;21434 combines the two.</p>
+    </div>
+
+    <div class="detail-block">
+      <h3>Scope of this work</h3>
+      <p class="lead">What the base pipeline establishes now, and what is deliberate future work.</p>
+      <dl class="dl">
+        <dt>In scope (base pipeline)</dt><dd>The full rating, end to end: a <b>component star score</b> (the three worst finding categories, CSCS Algorithm&nbsp;1) → a <b>Table&nbsp;H.8 weight</b> (how much the component matters × how feasible an attack is) → the vehicle rating <span class="mono">R = Σ(s·w)/Σ(w)</span>, plus a repeatable <b>simulation</b> to study whole fleets. Every rule rests on a standard.</dd>
+        <dt>Why CVSS (not the attack-potential method)</dt><dd>ISO/SAE 21434 Annex G allows three ways to judge attack feasibility. This work uses <b>CVSS</b>. The reason is practical: CVSS vectors are machine-readable and link straight to the NVD, so the same vectors the simulator produces can feed a <b>vulnerability database for automatic penetration testing</b>. The attack-potential method needs an expert panel and fits no scanner.</dd>
+        <dt>Future work (out of scope now)</dt><dd>Linking the finding categories to the <b>UN R155 Annex 5</b> threat list, adding a <b>weakest-link cap</b> next to the weighted mean, and calibrating the feature weights with industry data. These are identified, not built, the goal here is to prove the base model works.</dd>
+      </dl>
+    </div>
+
+    <div class="detail-block">
+      <h3>Architecture</h3>
+      <p class="lead">The vehicle E/E model and its three paradigms.</p>
+      <dl class="dl">
+        <dt>What</dt><dd>Represents the car as functional domains, physical zones and ECUs, and draws the Distributed → Domain → Zonal evolution from the same roster.</dd>
+        <dt>Roster</dt><dd>The 18 cybersecurity-relevant components of <b>Table 2</b> (not-CS-relevant rows omitted). Each ECU is anonymised and tags its source: the three real components are <b>Main ADAS Controller</b>, <b>Battery Controller</b>, and the <b>Central Infotainment Head Unit</b> (publicly disclosed CVEs, each linked to the NVD in <b>Component Stars</b>). The rest are simulated. Every ECU keeps a <span class="mono">ref</span> back to its Table 2 row.</dd>
+        <dt>Vulnerability treatment</dt><dd>The rating is a <b>point-in-time residual-risk</b> view. Consistent with ISO/SAE 21434 risk treatment and the UN R155 CSMS, any disclosed finding scoring <b>≥ 7.0 (High/Critical)</b> is taken to have been <b>reported and mitigated</b> by the supplier through coordinated disclosure, and is therefore excluded from the assessed set, the same threshold as the model's critical circuit-breaker. Findings <b>below 7.0</b> are carried as <b>accepted residual risk</b> and drive the star score. On the real head unit this excludes CVE-2023-34399 (9.8), CVE-2023-34402 (7.7) and the 7.5-rated set (CVE-2023-34397/34398/34400) as mitigated, leaving the sub-7 findings as residual.</dd>
+        <dt>Worked cases (Component &amp; Vehicle Stars)</dt><dd>Real sample CVEs, each linked to its NVD entry, build the branches on real ECUs: <b>Door Control</b> = one finding → <b>Case 1</b>. <b>Instrument Cluster</b> = two categories (Diagnostics + Software) → <b>Case 2</b>. <b>Body Control</b> = three categories (Networks + Diagnostics + Software) → <b>Case 3</b>. The two head units carry a ≥ 5.3 residual finding → <b>Worst-case</b>. Clean components → 5.00. CVE-2017-14937 is a UDS Security-Access weakness (categorised Diagnostics, not Cryptography). CVE-2023-34404 is an internal-Ethernet command injection (Networks).</dd>
+        <dt>Architecture decisions</dt><dd>ECU-per-zone layout in the zonal view. The Central Gateway / HPC is drawn as infrastructure, not an assessed component. The star score uses only each component's findings and their categories. ASIL/exposure/PIA are kept for the later vehicle phase. The Central Gateway / HPC is drawn as infrastructure, not an assessed component.</dd>
+        <dt>References</dt><dd><span class="tt">Distributed / Domain</span> author's journal, E/E evolution <span class="muted">(fill final citation in <span class="mono">config.js</span>)</span>. <span class="tt">Zonal</span> <a href="https://architecture.docs.soafee.io/en/latest/index.html" target="_blank" rel="noopener">SOAFEE Architecture Specification v1.0</a>, SDV, HW/SW separation, mixed-criticality with Freedom From Interference, least-privilege orchestration &amp; attestation. <span class="tt">ISO/SAE 21434</span> asset identification (TARA).</dd>
+      </dl>
+    </div>
+
+    <div class="detail-block">
+      <h3>Vehicle · Weight (Table H.8)</h3>
+      <dl class="dl">
+        <dt>Impact (row)</dt><dd>From the component <b>ASIL</b> via <span class="mono">asilToImpact</span> (QM→Negligible, A→Moderate, B→Major, C/D→Severe). If a <b>PIA</b> confirms the component processes PII, the impact is promoted one level (e.g. Moderate→Major), capped at Severe, the binary privacy column-shift.</dd>
+        <dt>Feasibility (column)</dt><dd>The CVSS exploitability <span class="mono">E = 8.22·V·C·P·U</span> (Annex G.3) of the same worst categories the star score uses, combined with the <b>same case weights</b> (case 2: <span class="mono">0.6·E₀ + 0.4·E₁</span>, and so on). So both Table H.8 axes react to a component the same way, which keeps it objective. That value maps to a Table G.8 band. A clean component sits at the lowest band. Then network interaction raises it: same-domain +0, cross-domain +1, connectivity +2, capped at High.</dd>
+        <dt>Weight</dt><dd><span class="mono">w = H.8[impact][feasibility]</span>, an integer 1–5, capped at 5. This is the <b>Table H.8 risk-matrix</b> value. It reproduces the Table H.9 worked examples (Spoofing: Severe&nbsp;&amp;&nbsp;High→5. DoS: Moderate&nbsp;&amp;&nbsp;Low→2), cross-checked independently by the Table&nbsp;H.10 formula <span class="mono">R = 1 + I×F</span>.</dd>
+        <dt>Standards</dt><dd><span class="tt">ISO 26262-3</span> ASIL · <span class="tt">ISO/SAE 21434</span> Annex G.3 (CVSS exploitability) · Table G.8 · Annex H Tables H.8/H.9/H.10.</dd>
+        <dt>Feasibility decisions</dt><dd>Each finding stores a <b>published CVSS base score</b> (from the disclosed vulnerability list) that drives the star score, plus an <b>exploitability vector</b> (AV/AC/PR/UI) that drives feasibility. For real NVD-enriched CVEs these coincide. For the anonymised head-unit CVEs, whose base scores are published but whose v3.1 vectors NVD has not enriched, the vector reflects the vendor-stated <b>physical/USB access</b> (AV:P → Very Low feasibility), documented per finding in <span class="mono">config.js</span>. Scope-changed PR is not re-scaled, consistent with the G.3 range P∈[0.27, 0.85]. Clean components take the lowest feasibility base. Switching them to their inherent exposure is a one-line change.</dd>
+      </dl>
+    </div>
+
+    <div class="detail-block">
+      <h3>Vehicle · Rating</h3>
+      <dl class="dl">
+        <dt>Aggregation</dt><dd><span class="mono">R = Σ(sᵢ·wᵢ) / Σ(wᵢ)</span> over the cybersecurity-relevant components, the weighted arithmetic mean of the star scores. Not-cs-relevant components are excluded. A component flagged CRITICAL at the component level is reported and held out of the mean.</dd>
+        <dt>Properties</dt><dd>All star scores 5 → R = 5 exactly. A finding lowers R in proportion to that component's weight, so the same vulnerability on a network-exposed ASIL&nbsp;D ECU (w=5) moves R more than on an isolated QM controller (w=1). Because the denominator is the sum of weights, the result is not diluted by the number of low-weight components.</dd>
+        <dt>Reference fleet</dt><dd>The 18-component roster gives <span class="mono">Σ(s·w)=116.72 / Σw=32</span> → <b>R = 3.65</b> → <b>★★★⯪ (3 full + 1 half)</b>. The rating is reported to the hundredth exactly as computed on a <b>[0, 5]</b> scale, so there is no rounding and no subjectivity in the number. The star icon is only a display aid drawn to the nearest half-star. A <b>5.00 means zero vulnerabilities</b>. The moment a component has any vulnerability its star score is capped at <b>4.75</b>, because we cannot certify more than 95% security.</dd>
+      </dl>
+    </div>
+
+    <div class="detail-block">
+      <h3>Component · Star score</h3>
+      <dl class="dl">
+        <dt>Categories</dt><dd>Findings are first grouped by <b>category</b> (Networks, Diagnostics, Software, Cryptography, …) and only the <b>worst CVSS in each category</b> is kept. This is the anti-dilution step: many findings in one area cannot pad or drag the score, one value represents each category. Only the <b>three worst categories</b> then count (c₁ ≥ c₂ ≥ c₃).</dd>
+        <dt>Three branches</dt><dd>The kept category severities C₀ ≥ C₁ ≥ C₂ (worst first) run through the threshold branches of Algorithm 1:<br>
+          • <b>All categories &lt; 5.3</b> → weighted by count: <span class="mono">case 1: X = 1.0·C₀</span> · <span class="mono">case 2: X = 0.6·C₀ + 0.4·C₁</span> · <span class="mono">case 3: X = 0.6·C₀ + 0.3·C₁ + 0.1·C₂</span> · case 0 (no vulns) → X = 0.<br>
+          • <b>All &lt; 7 but at least one ≥ 5.3</b> → <b>Worst-case</b> (≥ 5.3 · single vuln used): <span class="mono">X = 1.0·C₀</span>, only the single worst category counts. The lesser ones are not blended in.<br>
+          • <b>Any category ≥ 7 (High/Critical)</b> → <b>Error: "critical security risk detected"</b>, no numeric star score is issued.<br>
+          Then <span class="mono">s = −0.725·X + 5</span>, clamped to [0, 5]. No finding → 5.</dd>
+        <dt>Why categories</dt><dd>Grouping by category and keeping only the <b>worst CVSS per category</b> (then capping at three) is the anti-dilution rule: many findings in one area cannot pad or drag the score. Example: the Door Control Module has one finding, so it is one category → case 1 → <b>s = 1.81</b>. Body Control has three findings in three different categories → case 3. Category assignments live in <span class="mono">config.js</span>.</dd>
+        <dt>Cross-check</dt><dd>Reproduces the paper's Algorithm 2 exactly: C = [5, 4, 3] → X = 0.6·5 + 0.3·4 + 0.1·3 = 4.5 → s = −0.725·4.5 + 5 = <b>1.74</b>.</dd>
+        <dt>Standards</dt><dd><span class="tt">ACM CSCS '23</span> Algorithm 1 &amp; 2 (5-star-rate) · <span class="tt">CVSS</span> base scores.</dd>
+      </dl>
+    </div>
+
+    <div class="detail-block">
+      <h3>CVSS base approach, v3.1 (how the values are defined)</h3>
+      <dl class="dl">
+        <dt>Two quantities</dt><dd>Both come from the CVSS <b>Base metric group only</b> (CVSS-B, no Temporal/Threat or Environmental modifiers). (1) The <b>base score</b> (0–10) gives the CVSS severity and feeds the component star score. (2) The <b>exploitability sub-score</b> <span class="mono">E = 8.22·V·C·P·U</span> feeds the <b>feasibility</b> via Table G.8. Impact (C/I/A) is <i>not</i> used for feasibility, that axis is handled by ASIL.</dd>
+        <dt>How E is calculated</dt><dd>Per ISO/SAE 21434 §G.3 ≡ FIRST CVSS v3.1 §7.1, with V=AV, C=AC, P=PR, U=UI. Worked example, CVE-2019-18827 (<span class="mono">AV:N/AC:H/PR:N/UI:N</span>): <span class="mono">E = 8.22 × 0.85(AV:N) × 0.44(AC:H) × 0.85(PR:N) × 0.85(UI:N) = 2.22</span> → Table G.8 → <b>Medium</b> feasibility. The full metric-value derivation:</dd>
+        <dt>Metric values</dt><dd>
+          <table class="cvsstab"><thead><tr><th>Metric</th><th>Level</th><th>Value</th><th>Meaning (assessment view)</th></tr></thead><tbody>
+            <tr><td rowspan="4"><b>V = AV</b><br>Attack Vector</td><td>Network (N)</td><td class="n">0.85</td><td>remotely exploitable, network-routable</td></tr>
+            <tr><td>Adjacent (A)</td><td class="n">0.62</td><td>same physical/logical network (e.g. CAN segment, Wi-Fi range)</td></tr>
+            <tr><td>Local (L)</td><td class="n">0.55</td><td>local access or user-assisted delivery</td></tr>
+            <tr><td>Physical (P)</td><td class="n">0.20</td><td>physical contact with the component (e.g. debug port)</td></tr>
+            <tr><td rowspan="2"><b>C = AC</b><br>Attack Complexity</td><td>Low (L)</td><td class="n">0.77</td><td>no special conditions. Repeatable at will</td></tr>
+            <tr><td>High (H)</td><td class="n">0.44</td><td>attacker-uncontrollable preconditions must hold</td></tr>
+            <tr><td rowspan="3"><b>P = PR</b><br>Privileges Required</td><td>None (N)</td><td class="n">0.85</td><td>unauthenticated attack</td></tr>
+            <tr><td>Low (L)</td><td class="n">0.62 <span class="dim2">/ 0.68 S:C</span></td><td>basic user privileges needed</td></tr>
+            <tr><td>High (H)</td><td class="n">0.27 <span class="dim2">/ 0.50 S:C</span></td><td>administrative control needed</td></tr>
+            <tr><td rowspan="2"><b>U = UI</b><br>User Interaction</td><td>None (N)</td><td class="n">0.85</td><td>no human participation required</td></tr>
+            <tr><td>Required (R)</td><td class="n">0.62</td><td>a user must take some action</td></tr>
+            <tr><td rowspan="3"><b>C / I / A</b><br>Impact metrics<br><span class="dim2">(base score only,<br>not feasibility)</span></td><td>None (N)</td><td class="n">0</td><td>no impact on that property</td></tr>
+            <tr><td>Low (L)</td><td class="n">0.22</td><td>limited loss of confidentiality / integrity / availability</td></tr>
+            <tr><td>High (H)</td><td class="n">0.56</td><td>total or serious loss of that property</td></tr>
+          </tbody></table>
+          Feasibility uses the scope-Unchanged PR column (matching Annex G.3's P ∈ [0.27, 0.85]). The S:C values appear only inside the full base-score formula. All values are the exact FIRST v3.1 constants.</dd>
+        <dt>Impact metrics</dt><dd><span class="mono">C/I/A</span> None=0, Low=0.22, High=0.56. ISS = 1−(1−C)(1−I)(1−A). Impact = 6.42·ISS (scope U). Base = Roundup(min(Impact+E, 10)). Scope-C uses the 1.08 factor and the changed-scope Impact formula.</dd>
+        <dt>Discrete scores</dt><dd>Base scores are <b>discrete</b>: with C/I/A ∈ {N,L,H} and scope U the achievable positive scores span exactly <b>1.6–9.8</b>. The simulator enumerates all 1296 vectors and samples only from those inside the configured [Min, Max]. An unachievable range is reported, never mis-generated.</dd>
+        <dt>Feasibility (Table G.8)</dt><dd><span class="mono">E</span> 0.12–1.05 → Very Low · 1.06–1.99 → Low · 2.00–2.95 → Medium · 2.96–3.89 → High. Feasibility uses scope-Unchanged PR, matching the Annex G.3 range P ∈ [0.27, 0.85].</dd>
+        <dt>Severity (base score)</dt><dd>None 0.0 · Low 0.1–3.9 · Medium 4.0–6.9 · High 7.0–8.9 · Critical 9.0–10.0 (FIRST v3.1 §5). Generation caps at 6.9 so no vulnerability trips the star score's critical branch (≥7).</dd>
+        <dt>Matches the calculator</dt><dd>The base-score routine reproduces the official CVSS v3.1 calculator exactly, for example 6.8, 5.9, 4.4 (scope U), 6.5 (scope C) and the 9.8 maximum.</dd>
+        <dt>Sources</dt><dd>FIRST CVSS v3.1: <span class="mono">first.org/cvss/v3.1/specification-document</span> · <span class="mono">first.org/cvss/v3.1/user-guide</span>. ISO/SAE 21434 §G.3, Table G.8.</dd>
+      </dl>
+    </div>
+
+    <div class="detail-block">
+      <h3>Decisions &amp; limitations (consolidated, for review)</h3>
+      <dl class="dl">
+        <dt>H.8 is an example</dt><dd>ISO/SAE 21434 presents Tables H.8/H.9/H.10 as <i>example</i> risk matrices, the standard permits organisation-defined matrices. This work adopts the standard's own example verbatim, which is the least subjective choice available. A substitute matrix drops in via <span class="mono">config.scoring.h8</span> without code change.</dd>
+        <dt>Star score range</dt><dd>The star score lives on <b>[0, 5]</b> and is reported to the hundredth, which keeps the number objective. A clean component scores exactly <b>5.00</b>. Any vulnerability caps it at <b>4.75</b>, since more than 95% security cannot be certified once a vulnerability exists. This 5% residual insecurity is a deliberate rule.</dd>
+        <dt>Multi-vuln feasibility = average</dt><dd>With k vulnerabilities, Ē = ΣEᵢ/k per the defined rule. Note the averaging can place a component with one Medium and one Very Low exploit into Low, a deliberate, documented choice (the alternative, worst-of, is a one-line change) that reviewers may probe.</dd>
+        <dt>Clean-component feasibility</dt><dd>No confirmed finding → lowest band (no demonstrated exploit), then the interaction shift applies. The alternative basis (inherent exposure) is one line in config.</dd>
+        <dt>Feature weights</dt><dd>The security-feature weights are the previous simulator's illustrative assumptions. They shape a simulation <i>input</i> only, and require industry calibration before real-world claims.</dd>
+        <dt>Generation scope</dt><dd>Synthetic vulnerabilities are scope-Unchanged v3.1 vectors capped at 6.9 (so the critical branch is never diluted into a mean). Real scope-Changed CVEs are fully supported in assessment (e.g. CVE-2017-5579). ≥7 findings deliberately halt with the critical error rather than score.</dd>
+        <dt>Pending</dt><dd>The Distributed/Domain paradigm journal citation is a placeholder in <span class="mono">config.paradigms</span>. Verify exact ISO/SAE 21434 clause and table numbers against a controlled copy of the standard before publication.</dd>
+      </dl>
+    </div>
+
+    <div class="detail-block">
+      <h3>Simulation</h3>
+      <dl class="dl">
+        <dt>What it does</dt><dd>Generates synthetic vehicles and runs each through the same component + vehicle pipeline as the live reference vehicle (via <span class="mono">VRA.vehicle.rateSet</span>, no logic is duplicated). Reports the rating distribution, both Table H.8 axes, the CVSS picture, and exports the data per vehicle and per component.</dd>
+        <dt>Configurable</dt><dd>Number of vehicles (1→∞, presets 1000/5000/10000), ECUs per vehicle (0–100), vulnerability probability (manual <b>0</b>–100%, or derived from security features, fixed or random per vehicle. The 0.05 floor applies only to feature-derived modes, encoding "no real system is fully secure"), <b>Min and Max CVSS</b> of generated vulnerabilities (≤6.9), findings per affected ECU (1–3), PIA probability, and the <b>seed</b>. The <b>domain mix</b>, <b>per-domain ASIL distribution</b> and <b>per-domain network-interaction mix</b> are all editable in the <b>Distributions (advanced)</b> panel (relative weights, normalised per row. A Reset restores the paper's defaults), so every variant of the fleet can be configured without touching the code.</dd>
+        <dt>The 0% case</dt><dd>Setting vulnerability probability to <b>0%</b> yields <b>exactly 5 stars for every vehicle</b>, no finding → full star score (5) → <span class="mono">R = Σ(5·w)/Σ(w) = 5</span> regardless of weights. The manual 0% input is honoured, never silently floored.</dd>
+        <dt>Boundary correctness</dt><dd>CVSS v3.1 base scores are discrete (achievable positive scores: 1.6–9.8). The generator <b>enumerates all 1296 scope-U vectors</b> and samples only those inside [Min, Max], boundaries are honoured exactly. An unachievable range is reported in the UI (never silently mis-generated), and inverted Min/Max inputs are normalised. This replaces the earlier rejection sampler, which could emit out-of-range vectors on narrow ranges.</dd>
+        <dt>Feasibility-faithful generation</dt><dd>Feasibility depends only on the exploitability <span class="mono">E = 8.22·V·C·P·U</span> (AV/AC/PR/UI). The base score also folds in impact (C/I/A). Sampling uniformly over full vectors skews E low, high-E vectors become rare once the base is capped, so feasibility would never leave Very&nbsp;Low/Low on its own. The pool is therefore <b>grouped by exploitability vector</b>: each draw picks a group first (so E is representative across all four Table&nbsp;G.8 bands) and then an impact within it (so the base stays in the severity range). Both axes remain real v3.1 metrics, so the component (02) and vehicle (03) feasibility logic is reproduced exactly and every generated <span class="mono">E</span> lands in the ISO range 0.12–3.89.</dd>
+        <dt>Security features</dt><dd>Ported catalogue (Secure Boot, HSM EVITA Full/Medium, SecOC, JTAG locks, UDS 0x27/0x29, IDS/IPS, firewalls, fleet learning…): probability starts at 1.00 (unsecured), each enabled feature subtracts its weight, grouped features are mutually exclusive, floor 0.05. Weights are <b>illustrative assumptions pending industry calibration</b>, they set a simulation input only and touch no standard formula. Random per-vehicle selection is seeded, so even "auto" fleets replicate exactly.</dd>
+        <dt>Exports</dt><dd><b>CSV / vehicle</b>, one row per vehicle (seed, vuln probability, class counts, Σsw, Σw, R, stars). <b>CSV / component</b>, the raw generated data (seed, vehicle, domain, ASIL, PIA, interaction, findings, worst CVSS, Ē, feasibility, impact, w, s), kept up to 200 000 components.</dd>
+        <dt>Scalability</dt><dd>0–100 ECUs per vehicle spans <b>yesterday's</b> distributed fleets (many small ECUs), <b>today's</b> domain topologies, and <b>tomorrow's</b> zonal/HPC vehicles (fewer, larger). Same rules, any era.</dd>
+        <dt>Reproducibility</dt><dd>One seeded PRNG (mulberry32) drives <i>all</i> randomness, including random feature selection. Same seed + config → byte-identical fleet. The seed is written into every CSV.</dd>
+        <dt>The charts</dt><dd><b>Vehicle rating distribution</b>, <b>CVSS base-score distribution</b> by severity, <b>Scalability</b> (mean rating as the ECU count grows from 1 to 100, showing the rules hold from a small car to a big one), <b>Weight sensitivity</b> (how little R moves when the weights are perturbed by ±20%), <b>Weight distribution</b> (the Table H.8 weight per component), and the <b>Populated Table H.8</b> heatmap (impact by feasibility). The weight scale runs green (low risk) to red (high) for severity, tuned so the ends stay apart for colourblind viewers and in greyscale, and every cell carries its weight number as a second cue. Star distribution and case coverage show as bars. You can export per vehicle, per component, or as chart data.</dd>
+        <dt>Standards</dt><dd><span class="tt">ISO/SAE 21434</span> Annexes G+H at fleet scale · <span class="tt">UN R155</span> §7.2.2.2 continuous risk assessment · <span class="tt">CVSS v3.1</span> generation · <span class="tt">ISO 26262</span> ASIL prioritisation.</dd>
+      </dl>
+    </div>
+  </section>
+</div>
+
+<!-- ============ TAB · VERIFICATION & VALIDATION ============ -->
+<div data-tab="verval" role="tabpanel" hidden>
+
+  <section>
+    <h2 data-n="V1">Verification &amp; validation</h2>
+    <p class="section-intro">This is where you check the model is correct, kept separate from the description so the rules and the proof of the rules do not crowd each other. Two kinds of test run here. <b>Unit tests</b> check one rule at a time against a known expected value (for example, a clean component must score exactly 5.00). <b>Integration tests</b> run the whole thing together in a real browser page and confirm the parts line up (the vehicle table, the charts, the rating). Everything below runs on load, so if a change to <span class="mono">config.js</span> broke a rule you would see it turn red immediately.</p>
+  </section>
+
+  <section>
+    <h2 data-n="V2">Unit tests (run in your browser, live)</h2>
+    <p class="section-intro">Every rule ships with test cases carrying expected values. The badge turns red and shows expected-vs-got if any fails. The panels are collapsed to keep the page short. Click a heading to open one.</p>
+    <details class="vnv-fold">
+      <summary><span class="vnv-sum-t">Component level</span><span class="vnv-sum-h">Algorithm 1 grouping, thresholds, weighted cases, residual rule, face validity</span></summary>
+      <div class="panel"><div id="component-vnv"></div></div>
+    </details>
+    <details class="vnv-fold">
+      <summary><span class="vnv-sum-t">Vehicle level</span><span class="vnv-sum-h">Table H.8 weight, the CVSS feasibility pipeline, the shift mechanics, aggregation, weight sensitivity</span></summary>
+      <div class="panel"><div id="vehicle-vnv"></div></div>
+    </details>
+    <details class="vnv-fold">
+      <summary><span class="vnv-sum-t">Simulation</span><span class="vnv-sum-h">Calculator-exact CVSS v3.1, boundaries, the probability rule, seeded replicability, scalability, case coverage</span></summary>
+      <div class="panel"><div id="simulation-vnv"></div></div>
+    </details>
+  </section>
+
+  <section>
+    <h2 data-n="V3">Full test summary (unit + integration)</h2>
+    <div class="panel">
+      <dl class="dl">
+        <dt>Component unit tests</dt><dd><span class="ok">27 / 27 pass</span>, Algorithm 1 category grouping, threshold branches, weighted cases, Algorithm 2 reproduction, the residual rule, face validity, and reference-component star scores (live above and headless).</dd>
+        <dt>Vehicle unit tests</dt><dd><span class="ok">42 / 42 pass</span>, CVSS exploitability bounds (0.12–3.89), Table G.8 band boundaries, Table H.8 → H.9 reproduction, Table H.10 cross-check, interaction + privacy shift mechanics, reference-component weights, aggregation properties, and weight sensitivity (live above and headless).</dd>
+        <dt>Simulation unit tests</dt><dd><span class="ok">55 / 55 pass</span>, calculator-exact CVSS v3.1 (both scopes) and the severity scale. Boundary correctness (achievable span 1.6–9.8, narrow-range exactness, unachievable-range reporting, inverted-range normalisation). The security-feature catalogue (base 1.00 → floor 0.05, group exclusivity). The probability rule (0 or ≥ 5%). Seeded replicability (incl. random feature mode). <b>the 0% proof</b> (0% vulnerabilities → every vehicle exactly 5★. 0 ECUs → R=5). Completeness of inputs. Both-axes prioritisation. Scalability across 1–100 ECUs. The rule-harmony fleet audit (all weights ∈ [1,5], star scores ∈ [0,5], valid G.8 bands, zero criticals under the 6.9 cap). And <b>case coverage</b>, a below-5.3 fleet reaches Case 1, Case 2 and Case 3, a full-range fleet reaches Worst-case, and the 6.9 cap keeps Critical at zero.</dd>
+        <dt>Star score invariants</dt><dd><span class="ok">Pass.</span> Clean component always 5.00. Every numeric star score in [0, 5]. Any category ≥ 7 always raises the critical-risk error. Worst-case whenever a category is in [5.3, 7).</dd>
+        <dt>Render stress</dt><dd><span class="ok">Pass.</span> 600 architecture renders, 18 nodes each, no <span class="mono">undefined/NaN</span>. Every zonal render shows the HPC safety/non-safety partitions with the FFI boundary and the four zonal connection boxes.</dd>
+        <dt>Integration (real DOM)</dt><dd><span class="ok">Pass.</span> Full page under jsdom: all three paradigms draw 18 nodes. Vehicle table shows 18 rows, R = 3.65, stars rendered. Simulation runs a fleet and renders all six charts (rating, CVSS base-score, scalability, weight sensitivity, weight distribution, populated Table H.8) plus the star distribution. Component 27/27 + vehicle 42/42 + simulation 55/55 PASS. No <span class="mono">undefined/NaN</span> anywhere.</dd>
+        <dt>Static checks</dt><dd><span class="ok">Pass.</span> Strict lint clean and a dead-code pass clean across all five modules on every build.</dd>
+      </dl>
+    </div>
+  </section>
+</div>
+
+<!-- ============ TAB 3 · MANAGEMENT ============ -->
+<div data-tab="management" role="tabpanel" hidden>
+  <section>
+    <h2 data-n="M">What the rating means</h2>
+    <p class="section-intro">A plain-language view, no cybersecurity background needed.</p>
+    <div class="cards">
+      <div class="card"><div class="t">The idea</div><h4>A safety star for cybersecurity</h4><p>The result is a rating from 0 to 5 stars, reported to two decimal places. More stars mean better protection. The method rates the ECUs in a vehicle, such as braking, engine, doors and display, and combines them into that single figure.</p></div>
+      <div class="card"><div class="t">Where it comes from</div><h4>Grounded in published standards</h4><p>Each ECU is assessed for known vulnerabilities. The findings are scored against international standards: ISO/SAE 21434 for cybersecurity risk, ISO 26262 for the ASIL, and CVSS for vulnerability severity. The rating supports the UN ECE R155 type-approval process.</p></div>
+      <div class="card"><div class="t">Built to scale</div><h4>One method across vehicle generations</h4><p>The method applies to any vehicle generation, whether an older car with dozens of ECUs or a next-generation software-defined vehicle. Every simulated fleet is repeatable, so the same seed yields the same result and findings can be independently verified.</p></div>
+      <div class="card"><div class="t">Two views</div><h4>The average and the weakest component</h4><p>The headline rating is an average that weights the more important components more heavily. The weakest important component is also reported on its own, so a single poor component cannot be masked by the average. Formalising this as a cap is planned future work.</p></div>
+      <div class="card"><div class="t">Why trust it</div><h4>Every rule is auto-checked</h4><p>The method's rules are tested against known-good values every time it runs, and it reproduces a published worked example exactly. Nothing is hand-waved.</p></div>
+      <div class="card"><div class="t">Freshness</div><h4>A dated snapshot</h4><p>The rating is true on its test date. A software update or a newly found weakness triggers a re-check, like renewing a safety rating (UN R156 / R155).</p></div>
+      <div class="card"><div class="t">What it is not</div><h4>Not a guarantee</h4><p>Top marks means no critical weakness was found in the tested set on that date, a bounded, checkable claim, not a promise the car can never be hacked.</p></div>
+    </div>
+    <table class="meaning">
+      <tr><td>★★★★★</td><td>Excellent protection</td></tr>
+      <tr><td>★★★★☆</td><td>Strong protection</td></tr>
+      <tr><td>★★★☆☆</td><td>Adequate, some concerns</td></tr>
+      <tr><td>★★☆☆☆</td><td>Weak, significant concerns</td></tr>
+      <tr><td>★☆☆☆☆</td><td>Poor, major exposure</td></tr>
+      <tr><td>☆☆☆☆☆</td><td>Critical exposure, no effective protection</td></tr>
+    </table>
+  </section>
+</div>
+
+<footer>
+  <b>Simulator</b> to play · <b>Details</b> for the rules, references &amp; testing · <b>Management</b> for a plain-language view.
+  Modular build: <span class="mono">config.js</span> holds every number. Modules read from it and never hard-code values. <span class="mono">standalone.html</span> is the single-file build kept for direct testing.
+</footer>
+
+</div>
+<script src="config.js"></script>
+<script src="ui.js"></script>
+<script src="architecture.js"></script>
+<script src="rating.js"></script>
+<script src="simulation.js"></script>
+</body>
+</html>
