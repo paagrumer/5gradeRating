@@ -20,158 +20,157 @@ A Python-based implementation of a five-grade maturity model for assessing cyber
 ---
 
 ## 🚀 Overview
-Cybersecurity will be key for the new and future vehicles that depend on the exchange of data with the infrastructure. These vehicles will bring countless new features and are potentially capable of autonomous driving. This repository provides a simulator based on the research outlined above, with the primary goal of enabling users to simulate the five-grade rating framework designed to assess the cybersecurity quality of future vehicles and their components. The objective is to establish a trustable and reliable environment for these advanced technologies. Based on the standards used for secure software development and security assessment we defined a procedure for the evaluation of security of the technological components of a car.
+Cybersecurity will be key for the new and future vehicles that depend on the exchange of data with the infrastructure. These vehicles will bring countless new features and are potentially capable of autonomous driving. This repository provides the interactive web tool and the Python fleet simulator behind the research above. The goal is to let anyone rate the cybersecurity quality of a vehicle and its components on a clear scale, and to study how that rating behaves across whole fleets. The objective is to establish a trustable and reliable environment for these advanced technologies. Based on the standards used for secure software development and security assessment, we defined a procedure for the evaluation of the security of the technological components of a car.
+
+Think of it as Euro NCAP, but for cybersecurity rather than crash safety.
+
+## ⭐ What the rating is
+
+The framework gives a vehicle a cybersecurity rating on a scale of **0 to 5 stars**, reported to two decimal places. More stars mean better protection. The rating is built from the ECUs inside the car, the small computers that run braking, the engine, infotainment and the doors. Each ECU is scored on its own, and those scores are combined into a single figure for the whole vehicle. Every step rests on international standards the industry already uses (ISO/SAE 21434, ISO 26262 and CVSS), so the result is objective and repeatable rather than a matter of opinion.
+
+**How Component Stars work.** Each ECU earns a **star score** from the real vulnerabilities found in it. Two facts about each finding decide the score, both read from standard published data. The **impact** (how serious exploitation would be) comes from the automotive safety scale (ASIL, from ISO 26262), with a privacy check. The **feasibility** (how achievable the attack is) is read directly from the vulnerability's own CVSS record. Impact and feasibility meet in Table H.8 of ISO/SAE 21434, which sets the ECU's risk. A clean ECU scores a full 5.00, any confirmed vulnerability lowers the score towards 0, and a critical finding halts the ECU until it is fixed and re-tested.
+
+**How Vehicle Stars work.** Each ECU also carries a **weight** for how important it is to protect, so a braking controller counts far more than a courtesy lamp. The vehicle rating is the weighted average of the star scores, `Vehicle Stars = Sum(star score x weight) / Sum(weight)`. A weakness in a high-weight ECU pulls the rating down sharply, while the same weakness in a low-weight ECU barely moves it. Alongside the average, a conservative floor reports what the single weakest important ECU would give on its own, so one poor component cannot be averaged away unnoticed.
+
+| Stars | Meaning |
+|---|---|
+| 5 | Excellent protection |
+| 4 | Strong protection |
+| 3 | Adequate, some concerns |
+| 2 | Weak, significant concerns |
+| 1 | Poor, major exposure |
+| 0 | Critical exposure, no effective protection |
 
 ## 🧠 High-level view of the 5-grade framework
 
 ![image](https://github.com/user-attachments/assets/1dd12d54-c210-4cbb-a520-4dcfd454195c)
 
-## 📦 Installation
-```bash
-git clone https://github.com/paagrumer/5gradeRating
-python simulator.py
-```
+## 🖥️ Interactive web tool (no installation)
+
+The quickest way to explore the framework is the self-contained web tool. It needs no installation and no dependencies.
+
+- **Open it directly.** Download `standalone.html` from this repository and open it in any modern browser. Everything runs locally in the page.
+- **Or launch the hosted copy.** If GitHub Pages is enabled for this repository, the tool is served at `https://paagrumer.github.io/5gradeRating/standalone.html`.
+
+Inside the tool you can:
+
+- **Architecture** shows how the same ECUs are reorganised across distributed, domain and zonal vehicle generations.
+- **Simplified example** works one representative vehicle end to end, with every CVE linked to its NVD record, so the Component Stars and Vehicle Stars can be checked by hand.
+- **Simulator** generates thousands of synthetic vehicles and reports how the rating is distributed across the fleet. Runs are seeded and reproducible. **Reset to paper** loads the exact example from the journal, so the published rating can be reproduced directly.
+- **Ver&Val** runs the unit and integration tests live, so the rules can be checked the moment the page loads.
+
+## 🏗️ How it is built
+
+The tool ships in two equivalent forms. Both run the identical model in any modern browser, with no installation and no dependencies. Clone or download the repository, then open one of them.
+
+- **`standalone.html`** is the base: a single self-contained file with everything inlined. Open it or share it as is. This is the simplest way to run the tool.
+- **`index.html` plus its modules** is the same tool split into files for a clean, readable architecture. Keep the files together in one folder and open `index.html`.
+
+`standalone.html` is simply the built, inlined version of `index.html` and its modules, so the two are functionally identical. The modules exist for readability and segmentation: edit them for clarity, then inline them into `standalone.html` for distribution.
 
 ## 📁 File Structure
+
 ```bash
-├── simulator.py                # CLI entry point
+├── standalone.html   # The base: single self-contained tool (open in a browser)
+├── index.html        # The same tool, loads the modules below
+├── config.js         # Data and rules: ECUs, categories, ASIL to impact, Table H.8 and G.8, the shift, thresholds
+├── rating.js         # Component star score (Algorithm 1) and the vehicle rating
+├── simulation.js     # Fleet simulator, charts and CSV exports
+├── architecture.js   # The vehicle architecture diagrams
+├── ui.js             # Tab navigation and app wiring
+├── car.png
 ├── README.md
 ```
 
-## 🚗 Simulator Configuration and Usage Guide
-### 🔧 Configuration Parameters
-Before running the simulation, you can configure the following parameters:
+## 🚗 Configuration and rules
 
-## ECU Configuration
+The simulator inside the tool is driven by the settings below, and every rating follows the rules that follow.
 
-| Variable       | Description |
-|----------------|-------------|
-| `numberECUs`   | Number of ECUs (Electronic Control Units) per vehicle. |
-| `vulnProb`     | Probability of a vulnerability occurring in a component. |
-| `maxVuln`      | Maximum value for vulnerabilities per component. |
-| `minVuln`      | Minimum value for vulnerabilities per component. |
+## Fleet and ECU Configuration
 
----
-
-## Component Domain Weights
-
-| Component      | Variable        | Description |
-|----------------|------------------|-------------|
-| ADAS           | `adasWeight`     | Advanced Driver Assistance Systems. |
-| Powertrain     | `powertWeight`   | Engine, transmission, and related systems. |
-| HMI            | `hmiWeight`      | Infotainment, driver controls, and related systems. |
-| Body           | `bodyWeight`     | Doors, climate control, lighting, and related systems. |
-| Chassis        | `chWeight`       | Suspension, steering, braking, and related systems. |
+| Variable          | Description |
+|-------------------|-------------|
+| `numberVehicles`  | Number of vehicles in the simulated fleet. |
+| `ecusPerVehicle`  | Number of ECUs (Electronic Control Units) per vehicle. |
+| `vulnProbability` | Probability that a component carries a vulnerability. It is either 0 (a perfect fleet, every component scores 5.00) or at least 5%, since under-5% uncertainty cannot be claimed once a weakness is possible. |
+| `minCVSS`, `maxCVSS` | Lower and upper CVSS base score for generated findings. Both are capped below 7.0, because a CVSS of 7 or higher is treated as critical and handled separately. |
+| `piaProbability`  | Probability that a component handles personal data, which raises its impact by one level (the privacy shift). |
+| `seed`            | Seed for reproducibility (`0` for a random seed). |
 
 ---
 
-## Safety Levels (ASIL) Weights
+## Component Domains
 
-| ASIL Level | Variable     | Description |
-|------------|--------------|-------------|
-| QM         | `qmWeight`   | Quality Management – no specific safety requirement. |
-| A          | `aWeight`    | Minor safety implication. |
-| B          | `bWeight`    | Moderate safety implication. |
-| C          | `cWeight`    | High safety requirement. |
-| D          | `dWeight`    | Highest safety integrity requirement. |
+Each ECU belongs to a domain. The domain mix sets the share of ECUs drawn from each domain when a fleet is generated.
 
-## CAL Mapping (Cybersecurity Assurance Level)
-
-Mapping of ASIL levels to allowable CAL levels (Safety is prioritized in the research):
-
-| ASIL Level | Allowed CAL Levels |
-|------------|---------------------|
-| QM         | 1, 2                |
-| A          | 1, 2, 3             |
-| B          | 1, 2, 3             |
-| C          | 2, 3, 4             |
-| D          | 2, 3, 4             |
+| Domain     | Description |
+|------------|-------------|
+| ADAS       | Advanced Driver Assistance Systems. |
+| Powertrain | Engine, transmission, and related systems. |
+| HMI        | Infotainment, driver controls, and related systems. |
+| Body       | Doors, climate control, lighting, and related systems. |
+| Chassis    | Suspension, steering, braking, and related systems. |
 
 ---
 
-## Interaction Risk Map
+## Safety Levels (ASIL) and Impact
 
-Represents the potential impact of the interaction between components.
+The ASIL of a component sets the **impact** axis of the risk table (ISO 26262). A component that handles personal data rises one further level (the privacy shift, up to Severe).
 
-| Component    | Risk Levels (descending order)             | Notes |
-|--------------|---------------------------------------------|-------|
-| ADAS         | `High`, `High`, `Moderate`, `Low`          | Affects autonomous control, braking, steering. |
-| Powertrain   | `High`, `Moderate`, `Low`, `None`          | Affects performance and stability systems. |
-| HMI          | `Moderate`, `Low`, `None`, `None`          | Affects driver inputs and interfaces. |
-| Body         | `Low`, `Low`, `None`, `None`               | Minor impact on safety. |
-| Chassis      | `Moderate`, `Low`, `None`, `None`          | Impacts steering, suspension systems. |
+| ASIL Level | Impact |
+|------------|--------|
+| QM         | Negligible |
+| A          | Moderate |
+| B          | Major |
+| C          | Severe |
+| D          | Severe |
 
-## Example Component Selection Logic (Python Snippet)
+## Feasibility from CVSS (Table G.8)
 
-```python
-component_types = ["ADAS", "Powertrain", "HMI", "Body", "Chassis"]
-component_probs = [adasWeight, powertWeight, hmiWeight, bodyWeight, chWeight]
-selected_component = random.choices(component_types, weights=component_probs, k=1)[0]
+Feasibility is no longer estimated from the vehicle layout. It is read directly from each finding's own CVSS record, so two independent assessors reach the same value. The CVSS exploitability `E = 8.22 x AV x AC x PR x UI` of the worst categories is mapped to a Table G.8 band:
 
-safety_levels = ["QM", "A", "B", "C", "D"]
-safety_probs = [qmWeight, aWeight, bWeight, cWeight, dWeight]
-selected_asil = random.choices(safety_levels, weights=safety_probs, k=1)[0]
+| Feasibility band | Meaning |
+|------------------|---------|
+| Very Low         | Requires physical access and special privileges. |
+| Low              | Local or adjacent access, non-trivial to exploit. |
+| Medium           | Reachable with moderate effort. |
+| High             | Internet-reachable and easy to exploit. |
 
-cal_mapping = {
-    "QM": [1, 2],
-    "A": [1, 2, 3],
-    "B": [1, 2, 3],
-    "C": [2, 3, 4],
-    "D": [2, 3, 4],
-}
-selected_cal = random.choice(cal_mapping[selected_asil])
-```
+---
 
-### ▶️ Running the Simulator
+## Network-interaction shift (shift mode)
 
-After configuring your simulation environment in the main() function (see example below):
+The earlier interaction risk map is replaced by a **network-interaction shift**. Instead of estimating interaction risk by component type, the feasibility band is shifted by how far a component can reach across the vehicle network. This keeps the connectivity question inside the CVSS-driven feasibility rather than adding a separate hand-set judgement.
 
-**Example of default data:**
+| Reach (`netInteraction`) | Shift | Meaning |
+|--------------------------|-------|---------|
+| `Con`                    | +0    | Contained, no onward network reach. |
+| `E-E`                    | +0    | End-to-end within its own domain. |
+| `E-D`                    | +1    | Reaches an adjacent domain. |
+| `E-C`                    | +2    | Reaches the external / connectivity domain. |
 
-<img width="367" height="251" alt="image" src="https://github.com/user-attachments/assets/949b7d2c-52c0-4d63-8a0b-4f0fb3ddec1c" />
+The shifted band is capped at **High**.
 
-Follow these steps to run the 5-grade system simulator:
+## Combining impact and feasibility (Table H.8)
 
-1. Execute the simulation script using the command:
-  ```bash
-   python simulador.py -t auto -s 100 -n 5000
-   ```
+Impact (rows) and the shifted feasibility (columns) meet in Table H.8 of ISO/SAE 21434, which gives the component **weight** `w` in `[1, 5]`:
 
-   **Parameters:**
-   - `-t`: Simulation type — `auto` or `manual`
-   - `-n`: Number of simulation runs (must be > 0)
-   - `-s`: Seed value for reproducibility (`0` for a randomized seed)
+| Impact \ Feasibility | Very Low | Low | Medium | High |
+|-----------------------|:--------:|:---:|:------:|:----:|
+| Negligible            | 1 | 1 | 1 | 1 |
+| Moderate              | 1 | 2 | 2 | 3 |
+| Major                 | 1 | 2 | 3 | 4 |
+| Severe                | 2 | 3 | 4 | 5 |
 
-2. The simulation will generate data representing various 5-grade vehicle instances under the defined configuration.
-3. Upon completion, a file named `simulation.csv` will be created. This file serves as the primary output for post-simulation analysis.
+The component **star score** is `s = -0.725 x CVSS_C + 5`, clamped to `[0, 5]`, where `CVSS_C` is the combined worst-category CVSS. A clean component scores `5.00`; any vulnerability caps it at `4.75` (the 5% residual rule). The vehicle rating is the weighted average `R = Sum(s x w) / Sum(w)`.
 
-Each row in the file represents a vehicle's cybersecurity evaluation based on its components and simulated vulnerabilities.
+## ▶️ Using the tool
 
-### 📊 How to Analyze the Output Data
+Open `standalone.html` (or `index.html`) in a browser and use the tabs.
 
-The simulator exports data in CSV format, but the initial view in Excel may not show columns properly aligned. To fix that:
+- **Architecture** shows how the same ECUs are reorganised across distributed, domain and zonal vehicle generations.
+- **Simplified example** rates one representative vehicle, with every CVE linked to its NVD record, so the Component Stars and Vehicle Stars can be checked by hand.
+- **Simulator** generates a seeded fleet from the settings above and shows how the rating is distributed. Set the fleet size, the ECUs per vehicle, the vulnerability probability, the CVSS range, the PIA probability and the seed, then run. **Reset to paper** loads the exact example from the journal.
+- **Ver&Val** runs the unit and integration tests live, so the rules can be checked the moment the page loads.
 
-#### ✅ Step 1 – Format Columns in Excel
-  1. Open the `simulation.csv` file in Microsoft Excel.
-  2. Navigate to the **Data** tab and click **Text to Columns**.
-  3. Choose **Delimited** and click **Next**.
-  4. Select **Comma** as the delimiter, then click **Finish**.
-
-💡 This will properly separate the data into columns for analysis.
-
-<img width="1296" height="182" alt="image" src="https://github.com/user-attachments/assets/f21862a2-1381-4050-9b9a-970164b64890" />
-<img width="1298" height="310" alt="image" src="https://github.com/user-attachments/assets/599b4fce-9670-45f3-abd7-977b4aa15775" />
-<img width="497" height="407" alt="image" src="https://github.com/user-attachments/assets/37f37a04-d939-4692-bcb2-ad7dacd31f81" />
-<img width="497" height="405" alt="image" src="https://github.com/user-attachments/assets/d3099d9c-732a-47f1-9058-40dda0e71e6e" />
-
-#### ✅ Step 2 – Visualize the Data
-With the data correctly formatted, you can now explore and analyze it using Excel's built-in features:
-  - **Sort** by columns such as `final_rating` to compare cybersecurity levels across vehicles.
-  - Use **Conditional Formatting** to identify patterns and highlight components or categories with higher vulnerability impact.
-  - **Play around with the data** to observe how different configurations, vulnerabilities, and component combinations influence the overall vehicle rating.
-
-You can **repeat the simulation** as often as needed to explore alternative outcomes—just ensure you're using the same initial configuration, especially the **seed value**, to guarantee reproducibility.
-
-<img width="1603" height="197" alt="image" src="https://github.com/user-attachments/assets/7fea9a28-a980-4591-a619-07de98e8d1bc" />
-**SNIP**
-<img width="1567" height="325" alt="image" src="https://github.com/user-attachments/assets/2652b5d9-e564-435a-91c1-56704645ece3" />
+Results can be exported as CSV, per vehicle, per component, or as the underlying chart data. Because runs are seeded, the same settings and seed reproduce the same fleet every time.
