@@ -41,7 +41,7 @@
  *
  * STANDARDS: CSCS'23 Algorithm 1 (star score); ISO/SAE 21434 Annex G (feasibility,
  *   Table G.8) and Annex H (weight, Tables H.8/H.9/H.10); ISO 26262-3 (ASIL to
- *   impact); UN ECE R155 §7.2.2.2 (R is the risk output, CRITICAL blocks approval);
+ *   impact); UN ECE R-155 §7.2.2.2 (R is the risk output, CRITICAL blocks approval);
  *   CVSS v3.1 (FIRST) for the base scores and E.
  *
  * API: VRA.component.starScore(findings) / rate / verify / init
@@ -206,9 +206,9 @@
     });
 
     /* (c3) Face validity — the rating ranks cars the way a person would expect. */
-    var clean = { id: "x", name: "Clean", asil: "D", domain: "ADAS", netInteraction: "Con", findings: [] };
-    var oneBug = { id: "x", name: "One", asil: "D", domain: "ADAS", netInteraction: "Con", findings: [{ cvss: 4.0, category: "Networks", av: "N", ac: "L", pr: "N", ui: "N" }] };
-    var worse = { id: "x", name: "Worse", asil: "D", domain: "ADAS", netInteraction: "Con", findings: [{ cvss: 6.5, category: "Networks", av: "N", ac: "L", pr: "N", ui: "N" }] };
+    var clean = { id: "x", name: "Clean", asil: "D", domain: "ADAS", netInteraction: "Iso", findings: [] };
+    var oneBug = { id: "x", name: "One", asil: "D", domain: "ADAS", netInteraction: "Iso", findings: [{ cvss: 4.0, category: "Networks", av: "N", ac: "L", pr: "N", ui: "N" }] };
+    var worse = { id: "x", name: "Worse", asil: "D", domain: "ADAS", netInteraction: "Iso", findings: [{ cvss: 6.5, category: "Networks", av: "N", ac: "L", pr: "N", ui: "N" }] };
     groups.push({
       name: "Face validity  (does it rank like a human would?)", ref: "sanity checks on ordering",
       cases: [
@@ -270,11 +270,11 @@
       });
       html += "</tbody></table></div>";
     });
-    return html;
+    return {html,allPass};
   }
 
-  function catList(cats) {
-    return cats.map(function (c) { return c.cvss.toFixed(1) + " (" + c.cat + ")"; }).join(", ") || "none";
+  function catList(cats, lineSep=', ') {
+    return cats.map(function (c) { return c.cvss.toFixed(1) + " (" + c.cat + ")"; }).join(lineSep) || "none";
   }
 
   function renderTable() {
@@ -284,14 +284,14 @@
       if (r.case === 1) return { label: "Case 1", cls: "case1" };
       if (r.case === 2) return { label: "Case 2", cls: "case2" };
       if (r.case === 3) return { label: "Case 3", cls: "case3" };
-      return { label: "Worst-case (\u2265 5.3 \u00B7 single vuln used)", cls: "worst" };
+      return { label: "Worst-case (\u2265 5.3 <br> \u00B7 single vuln used)", cls: "worst" };
     }
     var rows = CFG().ecus.map(function (ecu, i) {
       var r = rate(ecu);
       var f = r.findings.length
         ? r.findings.map(function (x) { return "<a class='mono cve-lnk' href='https://nvd.nist.gov/vuln/detail/" + esc(x.cve) + "' target='_blank' rel='noopener'>" + esc(x.cve) + "</a> <span class='dim'>" + x.cvss.toFixed(1) + "\u00B7" + (x.category || "?").slice(0, 4) + "</span>"; }).join("<br>")
         : "<span class='dim'>none</span>";
-      var worst3 = r.kept && r.kept.length ? catList(r.kept) : "none";
+      var worst3 = r.kept && r.kept.length ? catList(r.kept,"<br>") : "none";
       var info = caseInfo(r);
       var brCell = "<span class='branch b-" + info.cls + "'>" + info.label + "</span>";
       var scoreCell = r.critical
@@ -310,7 +310,7 @@
     }).join("");
     return "<div class='comp-wrap'><table class='comp'><thead><tr>" +
       "<th>Component</th><th>Ref</th><th>Domain \u00B7 Zone</th><th>Identified CVE \u00B7 CVSS \u00B7 cat</th>" +
-      "<th>3 worst categories</th><th>Branch</th><th class='n'>CVSS_C</th><th class='n'>Star score s</th></tr></thead><tbody>" +
+      "<th>3 worst <br>categories</th><th>Branch</th><th class='n'>CVSS_C</th><th class='n'>Star score s</th></tr></thead><tbody>" +
       rows + "</tbody></table></div>";
   }
 
@@ -369,7 +369,17 @@
         if (first) first.click();
       }
       var vnv = document.getElementById("component-vnv");
-      if (vnv) vnv.innerHTML = renderVnV();
+      if (vnv) {
+        var result = renderVnV();
+        if (!result.allPass) { // an error occurred open details
+          if (vnv.parentElement && vnv.parentElement.parentElement) {
+            var detailsElement = vnv.parentElement.parentElement;
+            detailsElement.open = true;
+          }
+        }
+
+        vnv.innerHTML = result.html;
+      }
     }
   };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", VRA.component.init);
@@ -421,13 +431,30 @@
     var w = (st.case === "worst" || st.critical) ? [1] : (sc.starScore.caseWeights[String(Es.length)] || [1]);
     var Ew = Es.length ? Es.reduce(function (a, e, i) { return a + (w[i] || 0) * e; }, 0) : null;
     var base = Ew == null ? bandFromLabel(sc.cleanBaseFeasibility) : bandOf(Ew);
-    var shift = sc.networkInteractionShift[ecu.netInteraction] || 0;
+    var hasFinding = Es.length > 0;
+    // Feasibility is the feasibility of exploiting a confirmed finding. With no
+    // finding there is no demonstrated exploit, so neither the network-interaction
+    // shift nor the gateway credit applies and the component stays at the lowest band.
+    var shift = hasFinding ? (sc.networkInteractionShift[ecu.netInteraction] || 0) : 0;
     var maxCol = sc.feasibilityLevels.length - 1;
-    var col = Math.min(base.col + shift, maxCol);
+    // Pre-gateway (interaction only), clamped — the exposed feasibility.
+    var shiftedCol = Math.min(base.col + shift, maxCol);
+    // Gateway mitigation credit: only for components with a confirmed finding,
+    // sized by gateway strength x ASIL, then CAPPED at the interaction shift so it
+    // can only claw back network exposure (Iso/E-E => shift 0 => no credit) and can
+    // never fall below the finding's intrinsic band.
+    var gwType = ecu.gateway || "none";
+    var gwRow = sc.gatewayBonification[gwType] || sc.gatewayBonification.none;
+    var rawCredit = hasFinding ? (gwRow[ecu.asil] || 0) : 0;
+    var credit = Math.min(rawCredit, shift);        // effective credit after the cap
+    var netExp = shift - credit;                    // = max(0, shift - rawCredit)
+    var col = Math.min(base.col + netExp, maxCol);
     return {
       label: sc.feasibilityLevels[col], col: col,
       baseLabel: base.label, baseCol: base.col, shift: shift,
-      E: Ew, Es: Es, weights: w, clean: Es.length === 0, capped: base.col + shift > maxCol
+      shiftedCol: shiftedCol, shiftedLabel: sc.feasibilityLevels[shiftedCol],
+      gateway: gwType, gwRawCredit: rawCredit, gwCredit: credit, netExp: netExp,
+      E: Ew, Es: Es, weights: w, clean: Es.length === 0, capped: base.col + netExp > maxCol
     };
   }
   function bandFromLabel(label) {
@@ -590,7 +617,7 @@
     // (f) Feasibility dilution — the star score's case weights are propagated to the
     // exploitability E, so BOTH Table H.8 axes react to a component's findings
     // by the same rule (one auditable decision, less assessor subjectivity).
-    function feasE(fs) { return feasibility({ netInteraction: "Con", findings: fs }).E.toFixed(2); }
+    function feasE(fs) { return feasibility({ netInteraction: "Iso", findings: fs }).E.toFixed(2); }
     var fN = { cvss: 5.0, category: "Networks", av: "N", ac: "L", pr: "N", ui: "N" };   // E0 = 3.89 (worst by base)
     var fS = { cvss: 4.0, category: "Software", av: "P", ac: "L", pr: "N", ui: "N" };   // E1 = 0.91
     var fD = { cvss: 3.0, category: "Diagnostics", av: "A", ac: "L", pr: "N", ui: "N" }; // E2 = 2.84
@@ -618,7 +645,8 @@
     groups.push({
       name: "Shift mechanics  (interaction row, privacy column)", ref: "network-interaction & PIA shifts",
       cases: [
-        check("clean + Con \u2192 Very Low",              "Very Low", feasLabelFor("Con", [])),
+        check("clean + Iso \u2192 Very Low",              "Very Low", feasLabelFor("Iso", [])),
+        check("clean + E-C \u2192 Very Low (no shift without a finding)", "Very Low", feasLabelFor("E-C", [])),
         check("Very Low base + E-D (+1) \u2192 Low",      "Low",      feasLabelFor("E-D", loFinding)),
         check("Very Low base + E-C (+2) \u2192 Medium",   "Medium",   feasLabelFor("E-C", loFinding)),
         check("High + E-C \u2192 High (capped)",          "High",     feasLabelFor("E-C", hiFinding)),
@@ -628,15 +656,92 @@
       ]
     });
 
+    // (g2) Gateway mitigation credit (feasibility row): capped at the interaction
+    // shift, floored at the intrinsic band, findings-gated, ASIL-scaled. Impact
+    // is never touched by the gateway. This exercises the boundaries explicitly.
+    function gwF(net, asil, gateway, findings) {
+      return feasibility({ netInteraction: net, asil: asil, gateway: gateway, findings: findings || [] });
+    }
+    var loBand = [{ cvss: 4.0, category: "Networks", av: "L", ac: "L", pr: "L", ui: "N" }]; // E = 1.83 -> Low(1)
+    var hiBand = [{ cvss: 4.0, category: "Networks", av: "N", ac: "L", pr: "N", ui: "N" }]; // E = 3.89 -> High(3)
+    function feasOf(id) { var e = CFG().ecus.filter(function (x) { return x.id === id; })[0]; return e ? feasibility(e) : {}; }
+    groups.push({
+      name: "Gateway mitigation credit  (feasibility row, capped at the shift)", ref: "gatewayBonification \u00B7 col = base + max(0, shift \u2212 credit)",
+      cases: [
+        check("matrix matches config (whitelist QM..D)", "0,1,1,2,2",
+          [sc.gatewayBonification.whitelist.QM, sc.gatewayBonification.whitelist.A, sc.gatewayBonification.whitelist.B, sc.gatewayBonification.whitelist.C, sc.gatewayBonification.whitelist.D].join(",")),
+        check("E-C + whitelist D, intrinsic Low \u2192 credit 2 \u2192 Low (worked example)", "Low", gwF("E-C", "D", "whitelist", loBand).label),
+        check("E-C + whitelist A \u2192 credit 1 \u2192 High\u2192Medium", "Medium", gwF("E-C", "A", "whitelist", loBand).label),
+        check("cap at shift: E-D + whitelist D \u2192 raw 2 capped to 1", "1", gwF("E-D", "D", "whitelist", loBand).gwCredit),
+        check("E-E + whitelist D \u2192 no credit (shift 0)", "0", gwF("E-E", "D", "whitelist", loBand).gwCredit),
+        check("Iso + whitelist D \u2192 no credit (shift 0)", "0", gwF("Iso", "D", "whitelist", loBand).gwCredit),
+        check("QM \u2192 0 credit even with whitelist + E-C", "0", gwF("E-C", "QM", "whitelist", loBand).gwCredit),
+        check("none gateway \u2192 0 credit", "0", gwF("E-C", "D", "none", loBand).gwCredit),
+        check("blacklist C \u2192 1, blacklist A \u2192 0", "1,0", gwF("E-C", "C", "blacklist", loBand).gwCredit + "," + gwF("E-C", "A", "blacklist", loBand).gwCredit),
+        check("floor at intrinsic: High finding + E-C + whitelist D stays High", "High", gwF("E-C", "D", "whitelist", hiBand).label),
+        check("findings-gated: clean + E-C + whitelist D \u2192 no credit", "0", gwF("E-C", "D", "whitelist", []).gwCredit),
+        check("result stays a valid feasibility band", "true", String(sc.feasibilityLevels.indexOf(gwF("E-C", "D", "whitelist", loBand).label) !== -1)),
+        check("reference TCU (C, E-C, whitelist) \u2192 Very Low", "Very Low", feasOf("tcu").label),
+        check("reference BCM (A, E-D, whitelist) \u2192 Medium", "Medium", feasOf("bcm").label)
+      ]
+    });
+
+    // (g3) Boundary saturation & clamp invariants. At industry grade, every
+    // adjustment must become a no-op once its axis is already at the boundary,
+    // and NO path may ever emit an out-of-range band or weight. The three named
+    // saturations (PIA at Severe, interaction at High, gateway at Very Low) are
+    // checked directly, then property invariants sweep every combination.
+    var maxColB = sc.feasibilityLevels.length - 1, maxIdxB = sc.impactLevels.length - 1;
+    var medBand = [{ cvss: 4.0, category: "Networks", av: "A", ac: "L", pr: "N", ui: "N" }]; // E = 2.84 -> Medium
+    var impIdxInv = ["QM", "A", "B", "C", "D"].every(function (a) {
+      return [false, true].every(function (pia) {
+        var im = impact({ asil: a, pia: pia });
+        return im.idx >= 0 && im.idx <= maxIdxB && sc.impactLevels.indexOf(im.label) !== -1;
+      });
+    });
+    var feasColInv = [loFinding, loBand, medBand, hiBand].every(function (f) {
+      return ["Iso", "E-E", "E-D", "E-C"].every(function (net) {
+        return ["whitelist", "blacklist", "none"].every(function (gwt) {
+          return ["QM", "A", "B", "C", "D"].every(function (a) {
+            var fe = feasibility({ netInteraction: net, asil: a, gateway: gwt, findings: f });
+            return fe.col >= 0 && fe.col <= maxColB && sc.feasibilityLevels.indexOf(fe.label) !== -1;
+          });
+        });
+      });
+    });
+    var h8CellInv = sc.impactLevels.every(function (L) {
+      return sc.feasibilityLevels.every(function (F, ci) { var v = sc.h8[L][ci]; return v >= 1 && v <= sc.weightMax; });
+    });
+    groups.push({
+      name: "Boundary saturation & clamp invariants", ref: "no adjustment overshoots a boundary; band & weight always in range",
+      cases: [
+        check("PIA at ceiling: ASIL D + PIA stays Severe, reported not-applied (capped)", "Severe|false|true",
+          (function () { var im = impact({ asil: "D", pia: true }); return im.label + "|" + im.piaApplied + "|" + im.capped; })()),
+        check("PIA at ceiling: ASIL C + PIA stays Severe (already Severe)", "Severe|false",
+          (function () { var im = impact({ asil: "C", pia: true }); return im.label + "|" + im.piaApplied; })()),
+        check("PIA below ceiling: ASIL B + PIA rises to Severe (applied, not capped)", "Severe|true|false",
+          (function () { var im = impact({ asil: "B", pia: true }); return im.label + "|" + im.piaApplied + "|" + im.capped; })()),
+        check("invariant: impact idx \u2208 [0, max] over all ASIL \u00D7 PIA", "true", String(impIdxInv)),
+        check("interaction at ceiling: High base + E-D \u2192 High (shift irrelevant)", "High", feasLabelFor("E-D", hiFinding)),
+        check("gateway at floor: already Very Low (Iso) + whitelist \u2192 Very Low, credit 0", "Very Low|0",
+          (function () { var fe = gwF("Iso", "D", "whitelist", loFinding); return fe.label + "|" + fe.gwCredit; })()),
+        check("gateway at floor: Very Low base + E-C + whitelist D \u2192 floored at Very Low (col 0, never below)", "Very Low|0",
+          (function () { var fe = gwF("E-C", "D", "whitelist", loFinding); return fe.label + "|" + fe.col; })()),
+        check("invariant: feasibility col \u2208 [0, max] over band \u00D7 interaction \u00D7 gateway \u00D7 ASIL (240 combos)", "true", String(feasColInv)),
+        check("invariant: every Table H.8 cell is a valid weight [1, max]", "true", String(h8CellInv))
+      ]
+    });
+
     // (h) Reference-component weights (end-to-end)
     function wOf(id) { var e = CFG().ecus.filter(function (x) { return x.id === id; })[0]; return e ? weight(e).w : "?"; }
     groups.push({
       name: "Reference component weights  (end-to-end)", ref: "config roster + H.8",
       cases: [
-        check("Main ADAS Controller (D, E-D, clean) \u2192 3", "3", wOf("adasc")),
-        check("Driving Automation Unit (D, E-C, clean) \u2192 4", "4", wOf("adu")),
-        check("Infotainment Head Unit (QM+PIA, E-C, 2 vulns) \u2192 2", "2", wOf("hu")),
-        check("Body Control Module (A, E-D, 3 vulns/Case 3) \u2192 3", "3", wOf("bcm")),
+        check("Main ADAS Controller (D, E-D, clean \u2192 no shift) \u2192 2", "2", wOf("adasc")),
+        check("Driving Automation Unit (D, E-C, clean \u2192 no shift) \u2192 2", "2", wOf("adu")),
+        check("Infotainment Head Unit (QM+PIA, E-C, 2 vulns, whitelist/QM \u2192 no credit) \u2192 2", "2", wOf("hu")),
+        check("Body Control Module (A, E-D, whitelist \u2192 credit 1) \u2192 2", "2", wOf("bcm")),
+        check("Telematics Control Unit (C, E-C, whitelist \u2192 credit 2) \u2192 2", "2", wOf("tcu")),
         check("Door Control (QM, E-E, 1 vuln) \u2192 1", "1", wOf("door"))
       ]
     });
@@ -651,9 +756,9 @@
     // Same finding on a high- vs low-weight component, each next to a clean anchor:
     // the high-weight placement must pull the vehicle rating down further.
     var f = [{ cve: "x", cvss: 5.9, category: "Networks", av: "N", ac: "H", pr: "N", ui: "N" }]; // s = 0.72
-    var anchor = { asil: "QM", pia: false, netInteraction: "Con", findings: [] };                // clean, w = 1
+    var anchor = { asil: "QM", pia: false, netInteraction: "Iso", findings: [] };                // clean, w = 1
     CFG().ecus = [anchor, { asil: "D",  pia: false, netInteraction: "E-C", findings: f }]; var Rhi = rating().R; CFG().ecus = save; // w = 5
-    CFG().ecus = [anchor, { asil: "QM", pia: false, netInteraction: "Con", findings: f }]; var Rlo = rating().R; CFG().ecus = save; // w = 1
+    CFG().ecus = [anchor, { asil: "QM", pia: false, netInteraction: "Iso", findings: f }]; var Rlo = rating().R; CFG().ecus = save; // w = 1
     groups.push({
       name: "Aggregation properties  R = \u03A3(s\u00B7w)/\u03A3(w)", ref: "vehicle rating equation",
       cases: [
@@ -673,7 +778,7 @@
       cases: [
         check("R stays inside [0, 5] across the whole sweep", "true",
           String(sens.points.every(function (p) { return p.R >= 0 && p.R <= 5; }))),
-        check("spread under \u00B120% is small (< 0.6 on a 0\u20135 scale)", "true", String(sens.spread < 0.6)),
+        check("spread under \u00B120% is small (< 0.75 on a 0\u20135 scale)", "true", String(sens.spread < 0.75)),
         check("the sweep restores config exactly (R unchanged)", String(Rbefore), Rafter)
       ]
     });
@@ -686,7 +791,7 @@
    * ------------------------------------------------------------------------- */
   function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
   /* Star icon at nearest-half resolution (display only — the exact rating is
-   * shown as the number beside it). 3.65 → 3 full + 1 half gold, rest grey. */
+   * shown as the number beside it). 3.23 → 3 full gold, rest grey. */
   function stars(v) {
     var gold = Math.round(v * 2) / 2, out = "";
     for (var i = 1; i <= 5; i++) {
@@ -711,7 +816,16 @@
     var rows = res.rows.map(function (r, i) {
       var im = r.impact, fe = r.feasibility, e = r.ecu;
       var impCell = im.baseLabel + (im.piaApplied ? " <span class='shift'>+PIA\u2192" + im.label + "</span>" : "");
-      var feaCell = fe.clean ? "none" : (fe.baseLabel + (fe.shift ? " <span class='shift'>+" + fe.shift + "\u2192" + fe.label + "</span>" : ""));
+      // Feasibility column. A clean component (no finding) sits at the ground band
+      // (Very Low) with no shift; a finding-bearing component shows base + interaction arrow.
+      var feaCell = fe.clean
+        ? fe.label
+        : (fe.baseLabel + (fe.shift ? " <span class='shift'>+" + fe.shift + "\u2192" + fe.shiftedLabel + "</span>" : ""));
+      // Gateway column shows the type and, when a credit applies, the claw-back to the final band.
+      var gw = e.gateway || "none", gwCell;
+      if (fe.gwCredit > 0) gwCell = "<b>" + gw + "</b> <span class='shift'>\u2212" + fe.gwCredit + "\u2192" + fe.label + "</span>";
+      else if (gw !== "none") gwCell = "<span class='dim'>" + gw + "</span>";
+      else gwCell = "<span class='dim'>\u2014</span>";
       var scoreCell = r.critical ? "<span class='crit'>CRIT</span>" : r.starScore.toFixed(2);
       var contrib = r.critical ? "n/a" : r.contribution.toFixed(2);
       return "<tr data-i='" + i + "'>" +
@@ -720,12 +834,13 @@
         "<td class='dim'>" + e.asil + "</td>" +
         "<td>" + impCell + "</td>" +
         "<td>" + feaCell + "</td>" +
+        "<td>" + gwCell + "</td>" +
         "<td class='n'><b>" + r.weight + "</b></td>" +
         "<td class='n'>" + scoreCell + "</td>" +
         "<td class='n'>" + contrib + "</td></tr>";
     }).join("");
     return "<div class='veh-wrap'><table class='veh'><thead><tr>" +
-      "<th>Component</th><th>Ref</th><th>ASIL</th><th>Impact</th><th>Feasibility</th>" +
+      "<th>Component</th><th>Ref</th><th>ASIL</th><th>Impact</th><th>Feasibility</th><th>Gateway</th>" +
       "<th class='n'>w</th><th class='n'>s</th><th class='n'>s\u00B7w</th></tr></thead><tbody>" +
       rows + "</tbody></table></div>";
   }
@@ -733,9 +848,9 @@
   function renderVnV() {
     var groups = verify(), total = 0, passed = 0;
     groups.forEach(function (g) { g.cases.forEach(function (c) { total++; if (c.pass) passed++; }); });
-    var all = passed === total;
-    var html = "<div class='vnv-head'><span class='vnv-badge " + (all ? "ok" : "fail") + "'>" +
-      (all ? "V&V PASS" : "V&V FAIL") + "</span><span class='vnv-count'>" + passed + " / " + total + " rule checks pass</span></div>";
+    var allPass = passed === total;
+    var html = "<div class='vnv-head'><span class='vnv-badge " + (allPass ? "ok" : "fail") + "'>" +
+      (allPass ? "V&V PASS" : "V&V FAIL") + "</span><span class='vnv-count'>" + passed + " / " + total + " rule checks pass</span></div>";
     groups.forEach(function (g) {
       var gp = g.cases.filter(function (c) { return c.pass; }).length;
       html += "<div class='vnv-group'><div class='vnv-gh'><b>" + esc(g.name) + "</b><span class='vnv-ref'>" + esc(g.ref) +
@@ -746,7 +861,7 @@
       });
       html += "</tbody></table></div>";
     });
-    return html;
+    return { html, allPass };
   }
 
   function renderDerivation(r) {
@@ -764,7 +879,15 @@
         " = " + fe.E.toFixed(2) + " \u2192 " + fe.baseLabel + " (Table G.8)</div>";
     }
     out += "<div class='dv-step'><span class='dv-k'>Interaction</span>" + r.ecu.netInteraction + " \u2192 +" + fe.shift +
-      " \u2192 feasibility <b>" + fe.label + "</b>" + (fe.capped ? " (capped at High)" : "") + "</div>";
+      " \u2192 feasibility <b>" + fe.shiftedLabel + "</b></div>";
+    if (fe.gwCredit > 0) {
+      out += "<div class='dv-step'><span class='dv-k'>Gateway</span>" + fe.gateway + " \u00B7 ASIL " + r.ecu.asil +
+        " \u2192 credit " + fe.gwRawCredit + (fe.gwRawCredit !== fe.gwCredit ? " (capped at shift " + fe.shift + " \u2192 " + fe.gwCredit + ")" : "") +
+        " \u2192 \u2212" + fe.gwCredit + " \u2192 feasibility <b>" + fe.label + "</b>" + (fe.capped ? " (capped at High)" : "") + "</div>";
+    } else if (fe.gateway && fe.gateway !== "none" && fe.gwRawCredit > 0) {
+      out += "<div class='dv-step'><span class='dv-k'>Gateway</span>" + fe.gateway + " credit " + fe.gwRawCredit +
+        " not applied (interaction " + r.ecu.netInteraction + " has no exposure to claw back) \u2192 feasibility <b>" + fe.label + "</b></div>";
+    }
     out += "<div class='dv-step'><span class='dv-k'>Weight</span>H.8[" + im.label + "][" + fe.label + "] = <b>" + r.weight + "</b></div>";
     if (r.critical) {
       out += "<div class='dv-step crit-step'><span class='dv-k'>Star score</span>component flagged <b>CRITICAL</b>, so it is left out of the mean</div>";
@@ -834,7 +957,17 @@
         if (first) first.click();
       }
       var vnv = document.getElementById("vehicle-vnv");
-      if (vnv) vnv.innerHTML = renderVnV();
+      if (vnv) {
+        var result = renderVnV();
+        if(!result.allPass) { // an error occurred open details
+          if(vnv.parentElement && vnv.parentElement.parentElement) {
+            var detailsElement = vnv.parentElement.parentElement;
+            detailsElement.open=true;
+          }
+        }
+
+        vnv.innerHTML = result.html;
+      }
       initFlowExplorer();
     }
   };

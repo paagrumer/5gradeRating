@@ -12,10 +12,10 @@
  * STANDARDS COMPLIANCE
  *   ISO/SAE 21434:2021     Clause 9 (concept phase) — the architecture is the
  *                           basis for identifying cybersecurity-relevant items.
- *   UN ECE R155            §7.2.2.3 — the architecture supports the vehicle
+ *   UN ECE R-155            §7.2.2.3 — the architecture supports the vehicle
  *                           type description required for CSMS type approval;
  *                           the security view (HPC partitions, FFI boundary,
- *                           attack paths) directly maps to R155 Annex 5 threats.
+ *                           attack paths) directly maps to R-155 Annex 5 threats.
  *   SOAFEE v1.0            the zonal paradigm's guiding principles.
  *
  * OBJECTIVE VISUAL CONVENTIONS (no decorative subjectivity)

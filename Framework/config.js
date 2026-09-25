@@ -8,7 +8,7 @@
  *   ISO/SAE 21434:2021, Clause 8/15 (risk assessment); Annex G §G.3 + Table G.8
  *     (CVSS feasibility E = 8.22·V·C·P·U → band); Annex H Tables H.8/H.9/H.10
  *     (risk matrix, worked examples, cross-check formula).
- *   UN ECE R155, CSMS risk-assessment backdrop (Annex 5 threat mapping: future work).
+ *   UN ECE R-155, CSMS risk-assessment backdrop (Annex 5 threat mapping: future work).
  *   ISO 26262-3, ASIL → impact input (asilToImpact).
  *   CVSS v3.1 (FIRST), AV/AC/PR/UI sub-metrics reproduce the spec exactly.
  *   GDPR Art. 33/35, context for the PIA privacy shift (piaShift).
@@ -17,7 +17,7 @@
  * AUDIT
  *   • ECU roster = reference "Table 2"; each ECU keeps a `ref` to its row and a
  *     `kind` ("real" = anonymised real component, "sim" = simulated).
- *   • Not-CS-relevant rows omitted; the 18 CS-relevant components yield R = 3.65.
+ *   • Not-CS-relevant rows omitted; the 19 CS-relevant components (18 Table 2 rows + the added telematics unit) yield R = 3.23.
  *   • Finding av/ac/pr/ui sourced from NVD where enriched.
  *   • Paradigm sources: Distributed & Domain → author's journal (add citation);
  *     Zonal → SOAFEE Architecture Specification v1.0.
@@ -58,29 +58,29 @@
      * "sim") · domain · zone · controller/external (drawing + attack-surface
      * hints) · asil (→ impact) · pia (PII → privacy shift) · exposure (CVSS AV
      * level, metadata only, feasibility comes from the per-vuln vector) ·
-     * netInteraction (Con/E-E +0, E-D +1, E-C +2 rows) · findings (each: cve,
+     * netInteraction (Iso/E-E +0, E-D +1, E-C +2 rows) · findings (each: cve,
      * cvss base, category, av/ac/pr/ui vector) · note (audit).
      * The Central Gateway / HPC is infrastructure (the core, not an assessed
      * component) and is not in this roster.
      */
     ecus: [
       /* ADAS ------------------------------------------------------------ */
-      { id:"adasc", name:"Main ADAS Controller",     ref:"ADAS/Real_Comp_A", kind:"real", domain:"ADAS", zone:"Front-Right", controller:true,  external:false, asil:"D", pia:false, exposure:"Network",  netInteraction:"E-D", findings:[], note:"Anonymised real component, sensor fusion & driving-assistance hub." },
-      { id:"adu",   name:"Driving Automation Unit",  ref:"ADAS/Sim_Comp_B",  kind:"sim",  domain:"ADAS", zone:"Rear-Right",  controller:false, external:true,  asil:"D", pia:false, exposure:"Adjacent", netInteraction:"E-C", findings:[], note:"Simulated, automated-driving compute, connectivity-facing." },
-      { id:"cam",   name:"Front Camera",             ref:"ADAS/Sim_Comp_C",  kind:"sim",  domain:"ADAS", zone:"Front-Left",  controller:false, external:false, asil:"C", pia:false, exposure:"Adjacent", netInteraction:"E-D", findings:[], note:"Simulated, forward vision sensor." },
-      { id:"radf",  name:"Front Radar",              ref:"ADAS/Sim_Comp_D",  kind:"sim",  domain:"ADAS", zone:"Front-Right", controller:false, external:false, asil:"B", pia:false, exposure:"Adjacent", netInteraction:"E-E", findings:[], note:"Simulated, forward ranging sensor." },
-      { id:"radc",  name:"Corner Radar",             ref:"ADAS/Sim_Comp_E",  kind:"sim",  domain:"ADAS", zone:"Rear-Left",   controller:false, external:false, asil:"B", pia:false, exposure:"Local",    netInteraction:"E-E", findings:[], note:"Simulated, corner ranging sensor." },
+      { id:"adasc", name:"Main ADAS Controller",     ref:"ADAS/Real_Comp_A", kind:"real", domain:"ADAS", zone:"Front-Right", controller:true,  external:false, asil:"D", pia:false, exposure:"Network",  netInteraction:"E-D", gateway:"whitelist", findings:[], note:"Anonymised real component, sensor fusion & driving-assistance hub." },
+      { id:"adu",   name:"Driving Automation Unit",  ref:"ADAS/Sim_Comp_B",  kind:"sim",  domain:"ADAS", zone:"Rear-Right",  controller:false, external:true,  asil:"D", pia:false, exposure:"Adjacent", netInteraction:"E-C", gateway:"whitelist", findings:[], note:"Simulated, automated-driving compute, connectivity-facing." },
+      { id:"cam",   name:"Front Camera",             ref:"ADAS/Sim_Comp_C",  kind:"sim",  domain:"ADAS", zone:"Front-Left",  controller:false, external:false, asil:"C", pia:false, exposure:"Adjacent", netInteraction:"E-D", gateway:"whitelist", findings:[], note:"Simulated, forward vision sensor." },
+      { id:"radf",  name:"Front Radar",              ref:"ADAS/Sim_Comp_D",  kind:"sim",  domain:"ADAS", zone:"Front-Right", controller:false, external:false, asil:"B", pia:false, exposure:"Adjacent", netInteraction:"E-E", gateway:"blacklist", findings:[], note:"Simulated, forward ranging sensor." },
+      { id:"radc",  name:"Corner Radar",             ref:"ADAS/Sim_Comp_E",  kind:"sim",  domain:"ADAS", zone:"Rear-Left",   controller:false, external:false, asil:"B", pia:false, exposure:"Local",    netInteraction:"E-E", gateway:"none", findings:[], note:"Simulated, corner ranging sensor." },
 
       /* Powertrain ----------------------------------------------------- */
-      { id:"bat",   name:"Battery Controller",       ref:"Powertrain/Real_Comp_A", kind:"real", domain:"Powertrain", zone:"Rear-Right", controller:false, external:false, asil:"B", pia:false, exposure:"Local",    netInteraction:"E-D", findings:[], note:"Anonymised real component, high-voltage battery supervision." },
-      { id:"mot",   name:"Motor Control",            ref:"Powertrain/Sim_Comp_B",  kind:"sim",  domain:"Powertrain", zone:"Front-Left", controller:false, external:false, asil:"A", pia:false, exposure:"Local",    netInteraction:"E-E", findings:[], note:"Simulated, traction inverter / motor drive." },
-      { id:"chg",   name:"Onboard Charger",          ref:"Powertrain/Sim_Comp_C",  kind:"sim",  domain:"Powertrain", zone:"Rear-Left",  controller:false, external:false, asil:"A", pia:false, exposure:"Physical", netInteraction:"Con", findings:[], note:"Simulated, onboard charging unit." },
+      { id:"bat",   name:"Battery Controller",       ref:"Powertrain/Real_Comp_A", kind:"real", domain:"Powertrain", zone:"Rear-Right", controller:false, external:false, asil:"B", pia:false, exposure:"Local",    netInteraction:"E-D", gateway:"whitelist", findings:[], note:"Anonymised real component, high-voltage battery supervision." },
+      { id:"mot",   name:"Motor Control",            ref:"Powertrain/Sim_Comp_B",  kind:"sim",  domain:"Powertrain", zone:"Front-Left", controller:false, external:false, asil:"A", pia:false, exposure:"Local",    netInteraction:"E-E", gateway:"blacklist", findings:[], note:"Simulated, traction inverter / motor drive." },
+      { id:"chg",   name:"Onboard Charger",          ref:"Powertrain/Sim_Comp_C",  kind:"sim",  domain:"Powertrain", zone:"Rear-Left",  controller:false, external:false, asil:"A", pia:false, exposure:"Physical", netInteraction:"Iso", gateway:"none", findings:[], note:"Simulated, onboard charging unit." },
 
       /* HMI ------------------------------------------------------------ */
-      { id:"hu",    name:"Infotainment Head Unit",   ref:"HMI/Sim_Comp_A", kind:"sim", domain:"HMI", zone:"Front-Right", controller:true,  external:true,  asil:"QM", pia:true, exposure:"Network",  netInteraction:"E-C", findings:[{cve:"CVE-2018-20342",cvss:6.8,category:"Software",av:"P",ac:"L",pr:"N",ui:"N"},{cve:"CVE-2017-5579",cvss:6.5,category:"Networks",av:"L",ac:"L",pr:"L",ui:"N"}], note:"Simulated, infotainment & central display, connectivity-facing." },
-      { id:"cdu",   name:"Central Infotainment Head Unit",ref:"HMI/Real_Comp_B", kind:"real", domain:"HMI", zone:"Rear-Right",  controller:false, external:true,  asil:"QM", pia:true, exposure:"Physical", netInteraction:"E-C", findings:[
+      { id:"hu",    name:"Infotainment Head Unit",   ref:"HMI/Sim_Comp_A", kind:"sim", domain:"HMI", zone:"Front-Right", controller:true,  external:true,  asil:"QM", pia:true, exposure:"Network",  netInteraction:"E-C", gateway:"whitelist", findings:[{cve:"CVE-2018-20342",cvss:6.8,category:"Software",av:"P",ac:"L",pr:"N",ui:"N"},{cve:"CVE-2017-5579",cvss:6.5,category:"Networks",av:"L",ac:"L",pr:"L",ui:"N"}], note:"Simulated, infotainment & central display, connectivity-facing." },
+      { id:"cdu",   name:"Central Infotainment Head Unit",ref:"HMI/Real_Comp_B", kind:"real", domain:"HMI", zone:"Rear-Right",  controller:false, external:true,  asil:"QM", pia:true, exposure:"Physical", netInteraction:"E-C", gateway:"whitelist", findings:[
           /* Anonymised REAL head unit, publicly disclosed findings (see the CVE
-           * links). FRAMEWORK TREATMENT (ISO/SAE 21434 + R155 CSMS):
+           * links). FRAMEWORK TREATMENT (ISO/SAE 21434 + R-155 CSMS):
            * findings ≥ 7.0 are reported-and-mitigated by the supplier and excluded
            * (matches the ≥7 critical branch), CVE-2023-34399 (9.8), 34402 (7.7),
            * 34397/34398/34400 (7.5); sub-7 findings are accepted residual risk.
@@ -90,35 +90,45 @@
           {cve:"CVE-2024-37602",cvss:4.6,category:"Networks",av:"P",ac:"L",pr:"N",ui:"N"},
           {cve:"CVE-2024-37601",cvss:4.6,category:"Software",av:"P",ac:"L",pr:"N",ui:"N"}
         ], note:"Anonymised real component, infotainment head unit (publicly disclosed CVEs; follow the CVE links to the NVD). Findings ≥7 (incl. CVE-2023-34399 at 9.8) are reported-and-mitigated by the supplier and excluded; sub-7 findings carried as accepted residual risk (ISO/SAE 21434)." },
-      { id:"ic",    name:"Instrument Cluster",       ref:"HMI/Sim_Comp_C", kind:"sim", domain:"HMI", zone:"Front-Left",  controller:false, external:false, asil:"A",  pia:true, exposure:"Adjacent", netInteraction:"E-E", findings:[
+      { id:"ic",    name:"Instrument Cluster",       ref:"HMI/Sim_Comp_C", kind:"sim", domain:"HMI", zone:"Front-Left",  controller:false, external:false, asil:"A",  pia:true, exposure:"Adjacent", netInteraction:"E-E", gateway:"whitelist", findings:[
           /* CASE 2, two DISTINCT finding categories, both < 5.3
            * → X = 0.6·C₀ + 0.4·C₁. Uses the two INDUSTRY sample CVEs (A + B):
            *   CVE-2017-14937 broken crypto algorithm (CWE-327) → Cryptography 4.7
            *   CVE-2018-17977 memory-safety (Linux)             → Software     4.4 */
-          {cve:"CVE-2017-14937",cvss:4.7,category:"Diagnostics",av:"A",ac:"L",pr:"N",ui:"N"},
+          {cve:"CVE-2017-14937",cvss:4.7,category:"Cryptography",av:"A",ac:"L",pr:"N",ui:"N"},
           {cve:"CVE-2018-17977",cvss:4.4,category:"Software",av:"L",ac:"L",pr:"H",ui:"N"}
         ], note:"Simulated, driver information display; two sub-5.3 findings in distinct categories illustrate starScore Case 2." },
 
       /* Body ----------------------------------------------------------- */
-      { id:"lgt",   name:"Interior Lighting",        ref:"Body/Sim_Comp_A", kind:"sim", domain:"Body", zone:"Rear-Left",  controller:false, external:false, asil:"QM", pia:false, exposure:"Physical", netInteraction:"Con", findings:[], note:"Simulated, interior lighting module." },
-      { id:"door",  name:"Door Control Module",      ref:"Body/Sim_Comp_B", kind:"sim", domain:"Body", zone:"Front-Left", controller:false, external:false, asil:"QM", pia:false, exposure:"Local",    netInteraction:"E-E", findings:[{cve:"CVE-2018-17977",cvss:4.4,category:"Software",av:"L",ac:"L",pr:"H",ui:"N"}], note:"Simulated, locks, windows, mirrors." },
-      { id:"bcm",   name:"Body Control Module",      ref:"Body/Sim_Comp_C", kind:"sim", domain:"Body", zone:"Rear-Left",  controller:true,  external:false, asil:"A",  pia:false, exposure:"Local",    netInteraction:"E-D", findings:[
+      { id:"lgt",   name:"Interior Lighting",        ref:"Body/Sim_Comp_A", kind:"sim", domain:"Body", zone:"Rear-Left",  controller:false, external:false, asil:"QM", pia:false, exposure:"Physical", netInteraction:"Iso", gateway:"none", findings:[], note:"Simulated, interior lighting module." },
+      { id:"door",  name:"Door Control Module",      ref:"Body/Sim_Comp_B", kind:"sim", domain:"Body", zone:"Front-Left", controller:false, external:false, asil:"QM", pia:false, exposure:"Local",    netInteraction:"E-E", gateway:"none", findings:[{cve:"CVE-2018-17977",cvss:4.4,category:"Software",av:"L",ac:"L",pr:"H",ui:"N"}], note:"Simulated, locks, windows, mirrors." },
+      { id:"bcm",   name:"Body Control Module",      ref:"Body/Sim_Comp_C", kind:"sim", domain:"Body", zone:"Rear-Left",  controller:true,  external:false, asil:"A",  pia:false, exposure:"Local",    netInteraction:"E-D", gateway:"whitelist", findings:[
           /* CASE 3, three DISTINCT finding categories, all < 5.3
            * → X = 0.6·C₀ + 0.3·C₁ + 0.1·C₂. Three real sample CVEs, TWO industry
            * + ONE from a public disclosure report, all verified via NVD/CWE:
            *   CVE-2017-14937 broken crypto algorithm (CWE-327)  [industry] → Cryptography 4.7
            *   CVE-2023-34404 command injection, networking svc  [MB report]→ Networks     4.9
            *   CVE-2018-17977 memory-safety (Linux)              [industry] → Software     4.4 */
-          {cve:"CVE-2017-14937",cvss:4.7,category:"Diagnostics",av:"A",ac:"L",pr:"N",ui:"N"},
+          {cve:"CVE-2017-14937",cvss:4.7,category:"Cryptography",av:"A",ac:"L",pr:"N",ui:"N"},
           {cve:"CVE-2023-34404",cvss:4.9,category:"Networks",av:"A",ac:"L",pr:"N",ui:"N"},
           {cve:"CVE-2018-17977",cvss:4.4,category:"Software",av:"L",ac:"L",pr:"H",ui:"N"}
         ], note:"Simulated, body domain hub; three sub-5.3 findings in distinct categories (two industry + one from the MB report) illustrate starScore Case 3." },
-      { id:"seat",  name:"Seat Control Module",      ref:"Body/Sim_Comp_D", kind:"sim", domain:"Body", zone:"Rear-Right", controller:false, external:false, asil:"QM", pia:false, exposure:"Physical", netInteraction:"Con", findings:[], note:"Simulated, powered seat module." },
+      { id:"seat",  name:"Seat Control Module",      ref:"Body/Sim_Comp_D", kind:"sim", domain:"Body", zone:"Rear-Right", controller:false, external:false, asil:"QM", pia:false, exposure:"Physical", netInteraction:"Iso", gateway:"none", findings:[], note:"Simulated, powered seat module." },
 
       /* Chassis -------------------------------------------------------- */
-      { id:"susp",  name:"Suspension Control",       ref:"Chassis/Sim_Comp_A", kind:"sim", domain:"Chassis", zone:"Rear-Right", controller:false, external:false, asil:"A",  pia:false, exposure:"Local",    netInteraction:"E-E", findings:[], note:"Simulated, active suspension control." },
-      { id:"tpms",  name:"Tire Pressure Monitor",    ref:"Chassis/Sim_Comp_B", kind:"sim", domain:"Chassis", zone:"Rear-Left",  controller:false, external:false, asil:"QM", pia:false, exposure:"Physical", netInteraction:"Con", findings:[], note:"Simulated, TPMS." },
-      { id:"park",  name:"Parking Assist Sensor",    ref:"Chassis/Sim_Comp_C", kind:"sim", domain:"Chassis", zone:"Front-Right",controller:false, external:false, asil:"QM", pia:false, exposure:"Physical", netInteraction:"Con", findings:[], note:"Simulated, parking assistance sensor." }
+      { id:"susp",  name:"Suspension Control",       ref:"Chassis/Sim_Comp_A", kind:"sim", domain:"Chassis", zone:"Rear-Right", controller:false, external:false, asil:"A",  pia:false, exposure:"Local",    netInteraction:"E-E", gateway:"blacklist", findings:[], note:"Simulated, active suspension control." },
+      { id:"tpms",  name:"Tire Pressure Monitor",    ref:"Chassis/Sim_Comp_B", kind:"sim", domain:"Chassis", zone:"Rear-Left",  controller:false, external:false, asil:"QM", pia:false, exposure:"Physical", netInteraction:"Iso", gateway:"none", findings:[], note:"Simulated, TPMS." },
+      { id:"park",  name:"Parking Assist Sensor",    ref:"Chassis/Sim_Comp_C", kind:"sim", domain:"Chassis", zone:"Front-Right",controller:false, external:false, asil:"QM", pia:false, exposure:"Physical", netInteraction:"Iso", gateway:"none", findings:[], note:"Simulated, parking assistance sensor." },
+      { id:"tcu",   name:"Telematics Control Unit",   ref:"HMI/Sim_Comp_D", kind:"sim", domain:"HMI", zone:"Rear-Left",  controller:false, external:true,  asil:"C",  pia:false, exposure:"Network",  netInteraction:"E-C", gateway:"whitelist", findings:[
+          /* Connectivity-facing telematics unit sitting behind a whitelist gateway
+           * (proven in the TARA). Reuses the head unit's worst-case finding to show
+           * the gateway credit at work: E-C exposure (+2) raises feasibility to
+           * Medium, then the whitelist gateway at ASIL C (credit 2, capped at the
+           * shift) claws it back to Very Low, halving the H.8 weight (4 -> 2). The
+           * star score (worst-case, s = 0.07) is unaffected: the gateway lowers how
+           * much the component WEIGHS, not how vulnerable it IS. */
+          {cve:"CVE-2018-20342",cvss:6.8,category:"Software",av:"P",ac:"L",pr:"N",ui:"N"}
+        ], note:"Simulated, telematics/connectivity unit; worst-case residual finding behind a proven whitelist gateway, illustrates the gateway feasibility credit (E-C +2 clawed back to Very Low)." }
     ],
 
     /*
@@ -155,7 +165,7 @@
     references: [
       { tag: "Distributed / Domain", cite: "Author's journal, E/E architecture evolution", note: "replace with final citation", url: "" },
       { tag: "Zonal (SDV)",          cite: "SOAFEE Architecture Specification v1.0", url: "https://architecture.docs.soafee.io/en/latest/index.html" },
-      { tag: "Reference vehicle",    cite: "Table 2, Component Vulnerability Assessment; each ECU's `ref` traces to its row (R = 3.65)", url: "" }
+      { tag: "Reference vehicle",    cite: "Table 2, Component Vulnerability Assessment; each ECU's `ref` traces to its row (R = 3.23)", url: "" }
     ],
 
     /* ====================================================================
@@ -220,10 +230,24 @@
         { label: "High",     minE: 2.96, col: 3 }
       ],
       feasibilityLevels: ["Very Low", "Low", "Medium", "High"],
-      cleanBaseFeasibility: "Very Low",   // no finding → lowest base band (shift still applies)
+      cleanBaseFeasibility: "Very Low",   // no finding → lowest band; no interaction/gateway shift applies
       // Interaction shift: how far a compromise propagates (from the comms matrix).
-      // Con/E-E +0 (same domain), E-D +1 (cross-domain), E-C +2 (connectivity).
-      networkInteractionShift: { "Con": 0, "E-E": 0, "E-D": 1, "E-C": 2 },
+      // Iso/E-E +0 (same domain), E-D +1 (cross-domain), E-C +2 (connectivity).
+      networkInteractionShift: { "Iso": 0, "E-E": 0, "E-D": 1, "E-C": 2 },
+
+      // Gateway mitigation credit (feasibility row only, impact untouched).
+      // A gateway proven in the TARA lowers how easily the exposed path is reached.
+      // Sized by gateway strength (whitelist > blacklist > none) and scaled by ASIL:
+      // a higher-ASIL boundary is a higher-assurance, safety-driven filter, so it earns
+      // more credit. The credit is later CAPPED at the interaction shift (see feasibility),
+      // so it can only undo network exposure, never push below intrinsic exploitability,
+      // and Iso/E-E (shift 0) receive no credit. Credit applies only to components that
+      // carry a confirmed finding.
+      gatewayBonification: {
+        whitelist: { QM: 0, A: 1, B: 1, C: 2, D: 2 },
+        blacklist: { QM: 0, A: 0, B: 0, C: 1, D: 1 },
+        none:      { QM: 0, A: 0, B: 0, C: 0, D: 0 }
+      },
 
       //, Risk matrix: H.8 weight + H.10 cross-check ,
       // h8[impact][feasibilityCol] → w ∈ [1,5]. Rows: Negligible…Severe; cols: VeryLow…High.
@@ -293,8 +317,8 @@
         Chassis:    [0.10, 0.20, 0.25, 0.25, 0.20]
       },
 
-      /* Network-interaction mix PER domain (order Con, E-E, E-D, E-C).
-       * Paper "typical vehicle" configuration: the same Contained 25 / E-E 35 /
+      /* Network-interaction mix PER domain (order Iso, E-E, E-D, E-C).
+       * Paper "typical vehicle" configuration: the same Isolated 25 / E-E 35 /
        * E-D 25 / E-C 15 (%) mix is applied to every domain. In a real assessment
        * these come from the vehicle communication matrix. */
       netInteractionByDomain: {
@@ -303,6 +327,21 @@
         HMI:        [0.25, 0.35, 0.25, 0.15],
         Body:       [0.25, 0.35, 0.25, 0.15],
         Chassis:    [0.25, 0.35, 0.25, 0.15]
+      },
+
+      /* Gateway-coverage mix PER domain (order whitelist, blacklist, none).
+       * Each row sums to 1. Models how much of the fleet sits behind a proven
+       * gateway; the credit is only applied to exposed components carrying a
+       * finding (feasibility row, capped at the interaction shift). No paper
+       * value exists for this new feature, this is an editable segmentation-
+       * segmentation-coverage default. Raise the whitelist share to study the effect of a
+       * more segmented fleet on R. In a real assessment these come from the TARA. */
+      gatewayByDomain: {
+        ADAS:       [0.25, 0.35, 0.40],
+        Powertrain: [0.25, 0.35, 0.40],
+        HMI:        [0.25, 0.35, 0.40],
+        Body:       [0.25, 0.35, 0.40],
+        Chassis:    [0.25, 0.35, 0.40]
       },
 
       /* Security-feature catalogue → vulnerability probability.

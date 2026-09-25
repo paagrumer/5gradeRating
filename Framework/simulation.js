@@ -11,7 +11,7 @@
  * STANDARDS COMPLIANCE
  *   ISO/SAE 21434:2021    exercises the full risk assessment (Annexes G + H)
  *                          across a population.
- *   UN ECE R155           §7.2.2.2 — continuous risk assessment for CSMS type
+ *   UN ECE R-155           §7.2.2.2 — continuous risk assessment for CSMS type
  *                          approval at fleet scale.
  *   CVSS v3.1 (FIRST)     every generated vulnerability is a real v3.1 vector
  *                          (scope-unchanged), drawn from the ENUMERATED set of
@@ -231,7 +231,10 @@
   /* ===========================================================================
    * 6. SYNTHETIC GENERATION  (component → vehicle)
    * =========================================================================*/
-  var ASIL_K = ["QM", "A", "B", "C", "D"], NET_K = ["Con", "E-E", "E-D", "E-C"];
+  var ASIL_K = ["QM", "A", "B", "C", "D"], NET_K = ["Iso", "E-E", "E-D", "E-C"];
+  // Gateway types come from the one place they are defined: the bonification matrix
+  // keys. Distribution rows (gatewayByDomain) follow this same order.
+  var GW_K = Object.keys(SC().gatewayBonification);
 
   /* Case coverage (Algorithm 1 branches), in display order.
    *   Clean       no confirmed finding                → starScore 5
@@ -256,6 +259,7 @@
     var domain = domains[pickIndex(rng, domains.map(function (d) { return p.domainProbability[d] || 0; }))];
     var asil = ASIL_K[pickIndex(rng, p.asilByDomain[domain] || [1, 0, 0, 0, 0])];
     var net = NET_K[pickIndex(rng, p.netInteractionByDomain[domain] || [1, 0, 0, 0])];
+    var gateway = GW_K[pickIndex(rng, (p.gatewayByDomain && p.gatewayByDomain[domain]) || [0, 0, 1])];
     var pia = rng() < p.piaProbability;
 
     var findings = [];
@@ -267,7 +271,7 @@
     }
     return {
       id: "e" + idx, name: domain + "-ECU-" + idx, domain: domain,
-      asil: asil, pia: pia, netInteraction: net, findings: findings
+      asil: asil, pia: pia, netInteraction: net, gateway: gateway, findings: findings
     };
   }
 
@@ -372,6 +376,7 @@
         if (components) components.push({
           v: vi, name: r.ecu.name, domain: r.ecu.domain, asil: r.ecu.asil,
           pia: r.ecu.pia ? 1 : 0, net: r.ecu.netInteraction,
+          gateway: r.ecu.gateway || "none", gwCredit: r.feasibility.gwCredit || 0,
           k: (r.ecu.findings || []).length, worst: worst,
           E: r.feasibility.E, feas: r.feasibility.label, imp: r.impact.label,
           w: r.weight, s: r.critical ? "CRIT" : r.starScore, starCase: caseLabel
@@ -473,11 +478,12 @@
     if (!result.components) return null;
     var seed = result.params.seed;
     var head = ["seed", "vehicle", "component", "domain", "asil", "pia",
-                "net_interaction", "findings", "worst_cvss", "feasibility_E",
+                "net_interaction", "gateway", "gateway_credit", "findings", "worst_cvss", "feasibility_E",
                 "feasibility", "impact", "weight", "starScore", "case"];
     var lines = [head.join(",")];
     result.components.forEach(function (c) {
       lines.push([seed, c.v, c.name, c.domain, c.asil, c.pia, c.net,
+        c.gateway, c.gwCredit,
         c.k, c.k ? c.worst.toFixed(1) : "", c.E == null ? "" : c.E.toFixed(2),
         c.feas, c.imp, c.w, (c.s === "CRIT" ? "CRIT" : c.s.toFixed(2)), c.starCase].join(","));
     });
@@ -778,6 +784,28 @@
       ]
     });
 
+    /* (k) Gateway mitigation credit at fleet scale — the credit is generated
+     * from the per-domain coverage, is findings-gated, and raising whitelist
+     * coverage can only help the mean (it lowers the weight of vulnerable ECUs).
+     * Same seed => structurally identical fleets (pickIndex consumes one draw
+     * regardless of the weights), so only the gateway type differs. */
+    var gwNone  = run({ vehicles: 200, seed: 5, vulnProbability: 0.6, vulnProbMode: "manual", gatewayByDomain: sameForAllDomains([0, 0, 1]) });
+    var gwWhite = run({ vehicles: 200, seed: 5, vulnProbability: 0.6, vulnProbMode: "manual", gatewayByDomain: sameForAllDomains([1, 0, 0]) });
+    function gwCredited(r) { return r.components.filter(function (c) { return (c.gwCredit || 0) > 0; }).length; }
+    groups.push({
+      name: "Gateway mitigation credit  (fleet scale)", ref: "gatewayBonification \u00B7 capped at the interaction shift",
+      cases: [
+        check("generated ECUs carry a gateway type", "true",
+          String(["whitelist", "blacklist", "none"].indexOf(gwWhite.components[0].gateway) !== -1)),
+        check("none-only fleet \u2192 zero credited components", "0", gwCredited(gwNone)),
+        check("whitelist-only fleet \u2192 some credited components", "true", String(gwCredited(gwWhite) > 0)),
+        check("more gateway coverage never lowers the mean rating", "true",
+          String(gwWhite.stats.mean >= gwNone.stats.mean), "R_wl " + gwWhite.stats.mean.toFixed(3) + " \u2265 R_none " + gwNone.stats.mean.toFixed(3)),
+        check("credit only applies to components with a finding", "true",
+          String(gwWhite.components.every(function (c) { return c.k > 0 || (c.gwCredit || 0) === 0; })))
+      ]
+    });
+
     return groups;
   }
 
@@ -844,53 +872,6 @@
 
   /* ECU-count scalability sweep: mean rating across the fleet at growing ECU
    * counts, showing the same rules hold from a small car to a 100-ECU one. */
-  function chartScalability(sweep) {
-    var W = 640, H = 260, padL = 44, padR = 16, padT = 18, padB = 42;
-    var iw = W - padL - padR, ih = H - padT - padB;
-    var xs = sweep.map(function (p) { return p.ecuCount; });
-    var maxX = Math.max.apply(null, xs) || 1;
-    var svg = yGrid(padL, padT, iw, ih, 5, function (g) { return g; });
-    function px(x) { return padL + iw * (x / maxX); }
-    function py(v) { return padT + ih * (1 - v / 5); }
-    // x-axis ticks
-    sweep.forEach(function (p) {
-      svg += "<text x='" + px(p.ecuCount) + "' y='" + (padT + ih + 15) + "' text-anchor='middle' font-size='9' fill='#3a4550' font-family='" + MONO + "'>" + p.ecuCount + "</text>";
-    });
-    // line + points
-    var d = sweep.map(function (p, i) { return (i ? "L" : "M") + px(p.ecuCount).toFixed(1) + "," + py(p.meanR).toFixed(1); }).join(" ");
-    svg += "<path d='" + d + "' fill='none' stroke='" + NEUTRAL + "' stroke-width='2.2'/>";
-    sweep.forEach(function (p) {
-      svg += "<circle cx='" + px(p.ecuCount) + "' cy='" + py(p.meanR) + "' r='3.4' fill='" + NEUTRAL + "'/>";
-      svg += "<text x='" + px(p.ecuCount) + "' y='" + (py(p.meanR) - 8) + "' text-anchor='middle' font-size='8.5' font-weight='700' fill='" + NEUTRAL + "' font-family='" + MONO + "'>" + p.meanR.toFixed(2) + "</text>";
-    });
-    svg += "<text x='" + padL + "' y='" + (H - 3) + "' font-size='9' fill='#98a2ad' font-family='" + MONO + "'>mean vehicle rating vs ECU count (same rules, yesterday to tomorrow)</text>";
-    return svgWrap(W, H, "ECU-count scalability", svg);
-  }
-
-  /* Weight-sensitivity: how little R moves when the slope and every Table H.8
-   * weight are perturbed by a percentage. A flat line means the rating does not
-   * hinge on the exact weight values. */
-  function chartSensitivity(sens) {
-    var pts = sens.points, W = 640, H = 260, padL = 44, padR = 16, padT = 18, padB = 44;
-    var iw = W - padL - padR, ih = H - padT - padB;
-    var svg = yGrid(padL, padT, iw, ih, 5, function (g) { return g; });
-    var n = pts.length;
-    function px(i) { return padL + iw * (i / (n - 1)); }
-    function py(v) { return padT + ih * (1 - v / 5); }
-    // baseline band (min..max) to show the spread is small
-    var yTop = py(sens.max), yBot = py(sens.min);
-    svg += "<rect x='" + padL + "' y='" + yTop + "' width='" + iw + "' height='" + (yBot - yTop) + "' fill='rgba(8,75,82,0.08)'/>";
-    pts.forEach(function (p, i) {
-      svg += "<text x='" + px(i) + "' y='" + (padT + ih + 15) + "' text-anchor='middle' font-size='8.5' fill='#3a4550' font-family='" + MONO + "'>" + (p.pct > 0 ? "+" : "") + p.pct + "%</text>";
-    });
-    var d = pts.map(function (p, i) { return (i ? "L" : "M") + px(i).toFixed(1) + "," + py(p.R).toFixed(1); }).join(" ");
-    svg += "<path d='" + d + "' fill='none' stroke='" + NEUTRAL + "' stroke-width='2.2'/>";
-    pts.forEach(function (p, i) {
-      svg += "<circle cx='" + px(i) + "' cy='" + py(p.R) + "' r='3.2' fill='" + (p.pct === 0 ? QUALITY_RAMP[0] : NEUTRAL) + "'/>";
-    });
-    svg += "<text x='" + padL + "' y='" + (H - 3) + "' font-size='9' fill='#98a2ad' font-family='" + MONO + "'>R vs \u00B120% change in slope + Table H.8 weights (spread " + sens.spread.toFixed(2) + " on a 0\u20135 scale)</text>";
-    return svgWrap(W, H, "weight sensitivity", svg);
-  }
   /* Weight palette: green (low risk) to red (high risk) for severity, but tuned
    * to stay colourblind-safe. The low end is a bluish teal-green and the high end
    * a dark red, so the two ends differ in HUE and in LUMINANCE (light-ish to dark),
@@ -914,6 +895,7 @@
     svg += "<text x='" + padL + "' y='" + (H - 3) + "' font-size='9' fill='#98a2ad' font-family='" + MONO + "'>Table H.8 weight w assigned across all components</text>";
     return svgWrap(W, H, "weight distribution", svg);
   }
+
 
   /* Populated Table H.8: impact (rows, from ASIL) × feasibility (columns, from
    * CVSS E). Each cell is coloured by its H.8 weight on a green (w=1, low risk)
@@ -992,31 +974,6 @@
     return svgWrap(W, H, "CVSS base score distribution", svg);
   }
 
-  function renderCaseCoverage(result) {
-    var cases = result.caseCoverage, total = cases.reduce(function (a, c) { return a + c.count; }, 0) || 1;
-    var colorOf = { "Clean": QUALITY_RAMP[4], "Case 1": QUALITY_RAMP[3], "Case 2": QUALITY_RAMP[2], "Case 3": QUALITY_RAMP[1], "Worst-case": QUALITY_RAMP[0], "Critical": "#6b0018" };
-    var rows = cases.map(function (c) {
-      var pct = (100 * c.count / total).toFixed(1);
-      return "<div class='starrow'><span class='cl' style='color:" + colorOf[c.label] + "'>" + c.label + "</span>" +
-        "<span class='sbar'><i style='width:" + pct + "%;background:" + colorOf[c.label] + "'></i></span>" +
-        "<span class='sv'>" + c.count.toLocaleString() + " \u00B7 " + pct + "%</span></div>";
-    }).join("");
-    var reached = cases.filter(function (c) { return c.label.indexOf("Case") === 0 && c.count > 0; }).length;
-    return "<div class='sim-stars'><div class='sim-ctitle'>Case coverage " +
-      "<span class='ct-sub'>(Algorithm 1 branches \u00B7 " + reached + "/3 weighted cases reached)</span></div>" + rows + "</div>";
-  }
-
-  function renderStars(stats) {
-    var total = stats.n || 1, out = "";
-    stats.stars.forEach(function (c, i) {
-      var pct = (100 * c / total).toFixed(1);
-      out += "<div class='starrow'><span class='sl'>" + (i + 1) + "\u2605</span>" +
-        "<span class='sbar'><i style='width:" + pct + "%'></i></span>" +
-        "<span class='sv'>" + c.toLocaleString() + " \u00B7 " + pct + "%</span></div>";
-    });
-    return out;
-  }
-
   function renderResult(result) {
     var s = result.stats, p = result.params, cv = result.cvss;
     var warn = result.warning
@@ -1028,10 +985,10 @@
     var summary = "<div class='sim-stats'>" +
       stat("Vehicles", s.n.toLocaleString()) +
       stat("Mean", s.mean.toFixed(2) + " \u2605") +
-      stat("Min", s.min.toFixed(2)) +
-      stat("Max", s.max.toFixed(2)) +
+      stat("Min", s.min.toFixed(2) + " \u2605") +
+      stat("Max", s.max.toFixed(2) + " \u2605") +
       stat("Std dev", s.std.toFixed(2)) +
-      stat("Median", s.median.toFixed(2)) +
+      stat("Median", s.median.toFixed(2) + " \u2605") +
       stat("P5–P95", s.p5.toFixed(2) + "–" + s.p95.toFixed(2)) +
       stat("Vuln prob", probLabel) +
       stat("Mean CVSS", cv.meanBase.toFixed(2)) +
@@ -1042,22 +999,18 @@
       "<div class='sim-charts'>" +
         "<div class='sim-chart'><div class='sim-ctitle'>Vehicle rating distribution</div>" + chartHistogram(result) + "</div>" +
         "<div class='sim-chart'><div class='sim-ctitle'>CVSS base-score distribution <span class='ct-sub'>(" + cv.nFindings.toLocaleString() + " generated vulns \u00B7 CVSS-B)</span></div>" + chartCvssBase(result) + "</div>" +
-        "<div class='sim-chart'><div class='sim-ctitle'>Scalability <span class='ct-sub'>(mean rating vs ECU count, 1\u2013100)</span></div>" + chartScalability(scalabilitySweep(result.params)) + "</div>" +
-        "<div class='sim-chart'><div class='sim-ctitle'>Weight sensitivity <span class='ct-sub'>(R vs \u00B120% weight change)</span></div>" + chartSensitivity(VRA.vehicle.sensitivity()) + "</div>" +
         "<div class='sim-chart'><div class='sim-ctitle'>Weight distribution <span class='ct-sub'>(Table H.8 weight w per component)</span></div>" + chartWeightHistogram(result) + "</div>" +
-        "<div class='sim-chart'><div class='sim-ctitle'>Populated Table H.8 <span class='ct-sub'>(impact \u00D7 feasibility \u2192 component counts)</span></div>" + chartH8Matrix(result) + "</div>" +
-      "</div>" +
-      "<div class='sim-stars'><div class='sim-ctitle'>Star distribution</div>" + renderStars(s) + "</div>" +
-      renderCaseCoverage(result);
+        "<div class='sim-chart'><div class='sim-ctitle'>Table H.8 weights used <span class='ct-sub'>(impact \u00D7 feasibility \u2192 component counts)</span></div>" + chartH8Matrix(result) + "</div>" +
+      "</div>";
   }
   function stat(k, v) { return "<div class='sc'><div class='sck'>" + k + "</div><div class='scv'>" + v + "</div></div>"; }
 
   function renderVnV() {
     var groups = verify(), total = 0, passed = 0;
     groups.forEach(function (g) { g.cases.forEach(function (c) { total++; if (c.pass) passed++; }); });
-    var all = passed === total;
-    var html = "<div class='vnv-head'><span class='vnv-badge " + (all ? "ok" : "fail") + "'>" +
-      (all ? "V&V PASS" : "V&V FAIL") + "</span><span class='vnv-count'>" + passed + " / " + total + " rule checks pass</span></div>";
+    var allPass = passed === total;
+    var html = "<div class='vnv-head'><span class='vnv-badge " + (allPass ? "ok" : "fail") + "'>" +
+      (allPass ? "V&V PASS" : "V&V FAIL") + "</span><span class='vnv-count'>" + passed + " / " + total + " rule checks pass</span></div>";
     groups.forEach(function (g) {
       var gp = g.cases.filter(function (c) { return c.pass; }).length;
       html += "<div class='vnv-group'><div class='vnv-gh'><b>" + esc(g.name) + "</b><span class='vnv-ref'>" + esc(g.ref) +
@@ -1068,7 +1021,7 @@
       });
       html += "</tbody></table></div>";
     });
-    return html;
+    return { html,allPass};
   }
 
   /* ===========================================================================
@@ -1092,7 +1045,7 @@
     return "<details class='sf-panel' id='sf-panel'><summary>Security features \u2192 vulnerability probability " +
       "<span class='sf-derived' id='sf-derived'></span></summary>" +
       "<div class='sf-note'>Ported catalogue; weights are illustrative assumptions pending industry calibration. " +
-      "Base 1.00, floor 0.05; grouped features are mutually exclusive. Used only when the mode above is set to \u201Cfrom features\u201D.</div>" +
+      "Base 1.00, floor 0.05; grouped features are mutually exclusive.</div>" +
       "<div class='sf-grid'>" + rows + "</div></details>";
   }
 
@@ -1136,7 +1089,8 @@
       seed: Math.round(num("sim-seed", p.seed)),
       domainProbability: dist.domainProbability,
       asilByDomain: dist.asilByDomain,
-      netInteractionByDomain: dist.netInteractionByDomain
+      netInteractionByDomain: dist.netInteractionByDomain,
+      gatewayByDomain: dist.gatewayByDomain
     };
   }
 
@@ -1198,7 +1152,7 @@
   }
   function distributionsPanelHTML() {
     var p = SIM(), domains = CFG().domains.map(function (d) { return d.id; });
-    var ASIL = ["QM", "A", "B", "C", "D"], NET = ["Con", "E-E", "E-D", "E-C"];
+    var ASIL = ["QM", "A", "B", "C", "D"], NET = ["Iso", "E-E", "E-D", "E-C"], GW = Object.keys(SC().gatewayBonification);
     var dmix = domains.map(function (d) {
       return "<div class='dist-cell'><label>" + d + "</label>" + distInput("dp-" + d, p.domainProbability[d] || 0) + "</div>";
     }).join("");
@@ -1212,11 +1166,12 @@
       }).join("");
       return "<table class='dist-tab'>" + head + rows + "</table>";
     }
-    return "<details class='sf-panel' id='dist-panel'><summary>Distributions (advanced): domain mix, ASIL per domain, interaction per domain</summary>" +
+    return "<details class='sf-panel' id='dist-panel'><summary>Distributions (advanced): domain mix, ASIL per domain, interaction per domain, gateway per domain</summary>" +
       "<div class='sf-note'>Each row is a set of <b>shares that sum to 1 (100%)</b>. For example, five equal domains are 0.20 each. The live \u03A3 shows the row total (green at 1.00). <b>Equal</b> = equal shares, <b>Random</b> = random shares (both sum to 1), <b>Normalise</b> rescales the entered values to sum to 1. Presets skew the model from defensive to aggressive across the architecture's own domains. A row left all-zero falls back to its paper default.</div>" +
       "<div class='dist-block'><div class='dist-title'>Domain mix (which domains the ECUs belong to)<span class='dist-sum' data-sum='domain' data-sumn='" + domains.length + "'>1.00</span>" + secBtns("domain") + "</div><div class='dist-row'>" + dmix + "</div></div>" +
       "<div class='dist-block'><div class='dist-title'>ASIL distribution per domain, impact axis (ISO 26262)" + secBtns("asil") + "</div>" + tableFor("asil", ASIL, function (d) { return p.asilByDomain[d] || [1, 0, 0, 0, 0]; }) + "</div>" +
-      "<div class='dist-block'><div class='dist-title'>Network-interaction per domain, feasibility shift (Con +0, E-E +0, E-D +1, E-C +2)" + secBtns("net") + "</div>" + tableFor("net", NET, function (d) { return p.netInteractionByDomain[d] || [1, 0, 0, 0]; }) + "</div>" +
+      "<div class='dist-block'><div class='dist-title'>Network-interaction per domain, feasibility shift (Iso +0, E-E +0, E-D +1, E-C +2)" + secBtns("net") + "</div>" + tableFor("net", NET, function (d) { return p.netInteractionByDomain[d] || [1, 0, 0, 0]; }) + "</div>" +
+      "<div class='dist-block'><div class='dist-title'>Gateway coverage per domain, feasibility credit (whitelist &gt; blacklist &gt; none, scaled by ASIL, capped at the interaction shift; only credits exposed components with a finding)" + secBtns("gw") + "</div>" + tableFor("gw", GW, function (d) { return (p.gatewayByDomain && p.gatewayByDomain[d]) || [0, 0, 1]; }) + "</div>" +
       "<div class='dist-presets'><span class='dp-lbl'>Model-behaviour presets:</span>" +
         "<button type='button' class='dist-b preset' data-preset='defensive'>Defensive</button>" +
         "<button type='button' class='dist-b preset' data-preset='intermediate'>Intermediate</button>" +
@@ -1230,16 +1185,18 @@
     var p = SIM(), domains = CFG().domains.map(function (d) { return d.id; });
     function n(id, def) { var el = document.getElementById(id); if (!el) return def; var v = parseFloat(el.value); return isNaN(v) ? def : Math.max(0, v); }
     function rowOrDefault(vals, def) { return vals.reduce(function (a, b) { return a + b; }, 0) > 0 ? vals : def.slice(); }
-    var dp = {}, asil = {}, net = {};
+    var dp = {}, asil = {}, net = {}, gw = {};
     domains.forEach(function (d) {
       dp[d] = n("dp-" + d, p.domainProbability[d] || 0);
       var ar = p.asilByDomain[d] || [1, 0, 0, 0, 0];
       asil[d] = rowOrDefault([0, 1, 2, 3, 4].map(function (k) { return n("asil-" + d + "-" + k, ar[k] || 0); }), ar);
       var nr = p.netInteractionByDomain[d] || [1, 0, 0, 0];
       net[d] = rowOrDefault([0, 1, 2, 3].map(function (k) { return n("net-" + d + "-" + k, nr[k] || 0); }), nr);
+      var gr = (p.gatewayByDomain && p.gatewayByDomain[d]) || [0, 0, 1];
+      gw[d] = rowOrDefault([0, 1, 2].map(function (k) { return n("gw-" + d + "-" + k, gr[k] || 0); }), gr);
     });
     if (domains.reduce(function (a, d) { return a + dp[d]; }, 0) <= 0) domains.forEach(function (d) { dp[d] = p.domainProbability[d] || 0; });
-    return { domainProbability: dp, asilByDomain: asil, netInteractionByDomain: net };
+    return { domainProbability: dp, asilByDomain: asil, netInteractionByDomain: net, gatewayByDomain: gw };
   }
   /* "Reset to paper" — restore the full paper "typical vehicle" configuration:
    * the domain / ASIL / interaction distributions AND the main controls
@@ -1253,6 +1210,7 @@
       set("dp-" + d, p.domainProbability[d] || 0);
       (p.asilByDomain[d] || []).forEach(function (v, k) { set("asil-" + d + "-" + k, v); });
       (p.netInteractionByDomain[d] || []).forEach(function (v, k) { set("net-" + d + "-" + k, v); });
+      ((p.gatewayByDomain && p.gatewayByDomain[d]) || []).forEach(function (v, k) { set("gw-" + d + "-" + k, v); });
     });
     set("sim-vehicles", p.vehicles);
     set("sim-ecus", p.ecuCount);
@@ -1293,7 +1251,7 @@
     var domains = CFG().domains.map(function (d) { return d.id; });
     if (section === "domain") { fillRow(domains.map(function (d) { return "dp-" + d; }), mode); }
     else {
-      var n = section === "asil" ? 5 : 4;
+      var n = section === "asil" ? 5 : section === "gw" ? 3 : 4;
       domains.forEach(function (d) {
         var ids = []; for (var k = 0; k < n; k++) ids.push(section + "-" + d + "-" + k);
         fillRow(ids, mode);
@@ -1306,19 +1264,20 @@
    * ratings); Aggressive does the opposite (harsh ratings); Intermediate is
    * balanced. Domain mix → equal shares. */
   var DIST_PRESETS = {
-    defensive:    { asil: [4, 3, 2, 1, 0.5], net: [4, 3, 1, 0.5] },
-    intermediate: { asil: [2, 2, 2, 1, 1],   net: [2, 2, 1, 1] },
-    aggressive:   { asil: [0.5, 1, 2, 3, 4], net: [0.5, 1, 3, 4] }
+    defensive:    { asil: [4, 3, 2, 1, 0.5], net: [4, 3, 1, 0.5], gw: [5, 2, 1] },
+    intermediate: { asil: [2, 2, 2, 1, 1],   net: [2, 2, 1, 1],   gw: [2, 2, 2] },
+    aggressive:   { asil: [0.5, 1, 2, 3, 4], net: [0.5, 1, 3, 4], gw: [1, 2, 5] }
   };
   function distPreset(mode) {
     var pr = DIST_PRESETS[mode]; if (!pr) return;
     var domains = CFG().domains.map(function (d) { return d.id; });
-    var asilN = normaliseVals(pr.asil.slice()), netN = normaliseVals(pr.net.slice());
+    var asilN = normaliseVals(pr.asil.slice()), netN = normaliseVals(pr.net.slice()), gwN = normaliseVals(pr.gw.slice());
     var dEq = Math.round(100 / domains.length) / 100;
     domains.forEach(function (d) {
       distSet("dp-" + d, dEq);
       asilN.forEach(function (v, k) { distSet("asil-" + d + "-" + k, v); });
       netN.forEach(function (v, k) { distSet("net-" + d + "-" + k, v); });
+      gwN.forEach(function (v, k) { distSet("gw-" + d + "-" + k, v); });
     });
     updateDistSums();
   }
@@ -1352,17 +1311,18 @@
       ctl("sim-vmax", "Max CVSS", p.vulnRange[1], "0", "6.9") +
       ctl("sim-pia", "PIA probability %", Math.round(p.piaProbability * 100), "0", "100") +
       ctl("sim-seed", "Seed", p.seed, "0", "") +
-      "<div class='sim-presets'>" +
-        "<button class='sim-preset' data-n='1000'>1000</button>" +
-        "<button class='sim-preset' data-n='5000'>5000</button>" +
-        "<button class='sim-preset' data-n='10000'>10000</button>" +
-      "</div>" +
       "<div class='sim-actions'>" +
         "<button id='sim-run' class='sim-run'>Run simulation</button>" +
         "<button id='sim-export' class='sim-export'>CSV / vehicle</button>" +
         "<button id='sim-export-comp' class='sim-export'>CSV / component</button>" +
         "<button id='sim-export-charts' class='sim-export'>CSV / chart data</button>" +
-      "</div></div>" +
+      "</div>" +
+
+      "<div class='sim-presets'> <span class=\"comp-note-btn\" >Run with</span>" +
+      "<button class='sim-preset' data-n='1000'>1000</button>" +
+      "<button class='sim-preset' data-n='5000'>5000</button>" +
+      "<button class='sim-preset' data-n='10000'>10000</button><span class=\"comp-note-btn\"> vehicles for the above settings</span>" +
+          "</div></div>" +
       distributionsPanelHTML();
   }
   function ctl(id, label, val, min, max) {
@@ -1426,18 +1386,27 @@
       var app = document.getElementById("simulation-app");
       if (app) {
         app.innerHTML =
-          "<div class='comp-note'>Generates synthetic vehicles from the distributions in <span class='mono'>config.js</span> (all editable below, including the domain mix and the per-domain ASIL and interaction distributions in the <b>Distributions (advanced)</b> panel) and runs each through the same star score, Table H.8 weight + \u03A3(s\u00B7w)/\u03A3(w) pipeline. " +
-          "Vulnerabilities are drawn from the <b>exact set of achievable CVSS v3.1 base scores</b> inside [Min, Max]; the seed makes every run reproducible; export the data per vehicle or per component.</div>" +
+          "<div class='comp-note'>Generates synthetic vehicles with default values from the distributions in <span class='mono'>config.js</span>. All these values are editable below, including the domain mix and the per-domain ASIL and interaction distributions in the <b>Distributions (advanced)</b> panel.</div>" +
           controlsHTML() + "<div id='sim-output'></div>" +
           "<div class='sf-after'><div class='sf-after-lead'>Optional security features view: see how much vulnerability probability each set of ECU protections implies. This does not change the run above unless you switch the probability mode to \u201cfeatures\u201d.</div>" +
           featuresPanelHTML() +
-          "<div class='sim-observation'><span class='sim-obs-tag'>vuln note</span><span>Vulnerability probability is either <b>0%</b> (a perfect fleet, every component scores 5.00) or <b>5% and up</b>. Values from 1% to 4% are raised to 5%, since we can never claim under 5% uncertainty once a vulnerability is possible.</span></div>" +
+          "<div class='sim-observation'><span class='sim-obs-tag'>vuln note</span><span>Vulnerability probability is either <b>0%</b> (a perfect fleet, every component scores 5.00) or <b>5% and up</b>. Values from 1% to 4% are raised to 5%, since we can never claim under 5% uncertainty once a vulnerability is possible. In the security features above, this is enforced by having the minimum value of 5% even if all security fatures are chosen.</span></div>" +
           "</div>";
         wire();
         doRun();
       }
       var vnv = document.getElementById("simulation-vnv");
-      if (vnv) vnv.innerHTML = renderVnV();
+      if (vnv) {
+        var result = renderVnV();
+        if (!result.allPass) { // an error occurred open details
+          if (vnv.parentElement && vnv.parentElement.parentElement) {
+            var detailsElement = vnv.parentElement.parentElement;
+            detailsElement.open = true;
+          }
+        }
+
+        vnv.innerHTML = result.html;
+      }
     }
   };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", VRA.simulation.init);
