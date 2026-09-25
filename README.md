@@ -58,6 +58,26 @@ A finding of CVSS 7.0 or higher produces no rating at all: the assessment halts 
 
 ![image](https://github.com/user-attachments/assets/1dd12d54-c210-4cbb-a520-4dcfd454195c)
 
+The diagram below details the **Compute the Rating** step of the high-level view, carried out by the authorised authority on the collected state-of-the-art attacks.
+
+```mermaid
+flowchart LR
+    A["Collecting<br/>State-of-the-art attacks"] -- "Input" --> B
+    subgraph CR["Compute the Rating (Authorised Authority)"]
+        direction LR
+        B["Confirmed findings<br/>(CVSS vectors)"] --> C["Star score s<br/>s = −0.725·X + 5"]
+        B --> D["Exploitability E<br/>Table G.8"]
+        D --> F["Network-interaction<br/>shift"]
+        F --> G["Gateway<br/>credit"]
+        B -. "no finding" .-> V["Very Low<br/>feasibility"]
+        G --> W["Weight w<br/>Table H.8"]
+        V --> W
+        I["Impact<br/>ASIL + PIA"] --> W
+        C --> R["Vehicle rating<br/>R = Σ(s·w) / Σw"]
+        W --> R
+    end
+```
+
 ## 🖥️ Interactive web tool (no installation)
 
 The quickest way to explore the framework is the web tool. It needs no installation and no dependencies.
@@ -98,6 +118,10 @@ The tool ships in two equivalent forms. Both run the identical model in any mode
 ```
 
 ## 🔁 Reproducing the published results
+
+<p align="center">
+  <img src="assets/fleet-rating.svg" alt="Typical fleet mean rating: 3.65 out of 5 stars" width="480">
+</p>
 
 Every number in the journal article can be reproduced from this tool.
 
@@ -248,3 +272,7 @@ over the cybersecurity-relevant components, where `s` is each component's star s
 Open `standalone.html` (or `index.html`) and go to the **Simulator** tab. Set the fleet size, the ECUs per vehicle, the domain, ASIL, interaction and gateway mixes, the PIA probability, the vulnerability probability (manually or from the security features), the CVSS range and the seed, then run. **Reset to paper** restores the typical modern vehicle from the journal.
 
 Results can be exported as CSV, one row per vehicle or one row per component. Because runs are seeded, the same settings and seed reproduce the same fleet every time.
+
+---
+
+<p align="center">⭐ ⭐ ⭐ ⭐ ⭐<br><sub>Built on ISO/SAE 21434, ISO 26262 and CVSS v3.1</sub></p>
