@@ -17,7 +17,7 @@ A browser-based implementation of a five-star rating that expresses the **residu
 
 - 📄 [An Automotive Cybersecurity Maturity Level Assessment Programme (2023)](https://www.researchgate.net/publication/372140215)
 - 📄 [Computing an Automotive Cybersecurity Maturity Level Assessment Programme (2024)](https://www.researchgate.net/publication/376231070)
-- 📄 Automotive Cybersecurity Rating (journal article, under review at IEEE Access)
+- 📄 A Proof of Concept of an NCAP-Inspired Automotive Cybersecurity Rating Grounded in ISO/SAE 21434 (journal article, under review at IEEE Access)
 
 ---
 
